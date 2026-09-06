@@ -4978,13 +4978,13 @@ async function pullPlan(){
     planLoaded=true; renderPlan();
   }catch(_){planLoaded=true}
 }
-const PLAN_ICON={exercise:'\u{1F3CB}',stats:'\u{1F4CA}',english:'\u{1F5E3}'};
+const PLAN_ICON={exercise:'\u{1F3CB}',cardio:'\u{1FAA2}',strength:'\u{1F3CB}',stats:'\u{1F4CA}',english:'\u{1F5E3}'};
 function renderPlan(){
   const host=document.getElementById('planBox');
   if(!host)return;
   const today=vTodayISO();
   const rows=PLAN.filter(p=>p.d===today)
-    .sort((a,b)=>({exercise:1,stats:2,english:3}[a.kind]||9)-({exercise:1,stats:2,english:3}[b.kind]||9));
+    .sort((a,b)=>({exercise:1,cardio:1,strength:2,stats:3,english:4}[a.kind]||9)-({exercise:1,cardio:1,strength:2,stats:3,english:4}[b.kind]||9));
   if(!rows.length){host.innerHTML=`<div class="rev-empty">${esc(t('plan.none'))}</div>`;
     const sm=document.getElementById('planSum'); if(sm)sm.textContent=''; return}
   const doneMin=rows.filter(p=>p.done).reduce((s,p)=>s+(p.minutes||0),0);
