@@ -560,7 +560,7 @@
   .tl-gutter{flex:0 0 150px;position:relative}
   .tl-gutter .tl-ghead{height:0}
   .tl-gutter .tl-gbody{position:relative}
-  .tlg-anchor{position:absolute;left:0;transform:translateY(-50%);
+  .tlg-anchor{position:absolute;left:8px;transform:translateY(-50%);
     display:flex;align-items:flex-start;gap:3px;font-size:10.5px;line-height:1.25;
     color:var(--muted);pointer-events:none;max-width:150px}
   .tlg-tri{color:var(--accent-ink);font-size:9px;flex:0 0 auto;margin-top:1px;margin-left:-2px}
@@ -568,7 +568,7 @@
 .tlg-pcbar{position:absolute;left:1px;width:3px;border-radius:2px;pointer-events:none}
 .tlg-pc-active{--pc:#475569}.tlg-pc-idle{--pc:#cbd5e1}
 .tlg-pcbar{background:var(--pc)}
-.tlg-anchor.tlg-pcmark{color:var(--pc);padding-left:7px;align-items:center;white-space:nowrap;max-width:none}
+.tlg-anchor.tlg-pcmark{color:var(--pc);align-items:center;white-space:nowrap;max-width:none}
 .tlg-pcico{height:12px;width:17px;flex:0 0 auto;fill:var(--pc)}
 .tlg-fig-mini{width:6.9px;fill:#22a06b}
 .tlg-care.tlg-mini .tlg-x{color:#22a06b}
@@ -1651,7 +1651,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-10i';
+const BUILD='2026-09-10j';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -3718,7 +3718,7 @@ function tlAnchorGutter(iso){
   let prevBottom=-1e9;
   return bars+rows.map(r=>{
     const top=Math.max(r.top,prevBottom);
-    prevBottom=top+15;
+    prevBottom=top+((r.care||r.pc)?20:15);   // icon rows are taller than a text row
     // the note she dictates onto a 个护 row stays OFF the surface — tap the
     // figure to open the same detail drawer a block gets (her 2026-08-16 ask)
     if(r.pc)return `<div class="tlg-anchor tlg-pcmark tlg-pc-${r.pc}" style="top:${top.toFixed(1)}px" title="${esc(r.label)}">`
