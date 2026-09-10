@@ -565,6 +565,12 @@
     color:var(--muted);pointer-events:none;max-width:150px}
   .tlg-tri{color:var(--accent-ink);font-size:9px;flex:0 0 auto;margin-top:1px;margin-left:-2px}
   .tlg-fig{height:13px;width:8.5px;flex:0 0 auto;margin-top:.5px;fill:var(--care-ink,#0284c7)}
+.tlg-pcbar{position:absolute;left:1px;width:3px;border-radius:2px;pointer-events:none}
+.tlg-pc-active{--pc:#475569}.tlg-pc-idle{--pc:#cbd5e1}
+.tlg-pcbar{background:var(--pc)}
+.tlg-pcmark{position:absolute;left:6px;transform:translateY(-50%);display:flex;align-items:center;gap:4px;
+    font-size:9.5px;color:var(--pc);pointer-events:none;max-width:112px}
+.tlg-pcico{height:12px;width:16px;flex:0 0 auto;fill:var(--pc)}
 .tlg-fig-mini{width:6.9px;fill:#22a06b}
 .tlg-care.tlg-mini .tlg-x{color:#22a06b}
   .tlg-care .tlg-x{color:var(--care-ink,#0284c7)}
@@ -1455,6 +1461,8 @@
   </section>
 
   <section id="tab-sport" class="hidden">
+    <div class="card" id="cycCard"><div class="sc-title" data-i18n="cyc.title"></div>
+      <div id="cycBox"></div></div>
     <div class="card bw-card"><div class="sc-title"><span data-i18n="bw.title"></span>
         <span class="bw-wk" id="bwSportWk"></span></div>
       <div id="bwSportBox"></div></div>
@@ -1469,8 +1477,6 @@
       <div class="card"><div class="sc-title" data-i18n="ex.types"></div><div id="exTypesBox"></div></div>
       <div class="card"><div class="sc-title" data-i18n="cmp.title"></div><div id="cmpExBox"></div></div>
     </div>
-    <div class="card" id="cycCard"><div class="sc-title" data-i18n="cyc.title"></div>
-      <div id="cycBox"></div></div>
     <div class="h-sec" id="bodySec"><span data-i18n="ex.body"></span></div>
     <div class="card"><div class="sc-title" data-i18n="h.weight"></div>
       <div id="weightBox"></div></div>
@@ -1646,7 +1652,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-10d';
+const BUILD='2026-09-10e';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1799,6 +1805,7 @@ const I18N={
   'todo.empty':'All done ★',
   'todo.edit':'Edit','todo.save':'Save','todo.cancel':'Cancel',
   'todo.dated':'With a date','todo.undated':'No date','todo.clearDue':'Remove date','todo.addDue':'Add date',
+  'pc.active':'at the PC','pc.idle':'PC on, away',
   'wk.an.title':'Daily recap','wk.an.low':'{h} logged · {p}% of the day — no recap',
   'wk.an.none':'nothing logged',
   'stat.rd':'Day','stat.rw':'Week','stat.rm':'Month',
@@ -1970,6 +1977,7 @@ const I18N={
   'todo.empty':'全部完成 ★',
   'todo.edit':'改','todo.save':'保存','todo.cancel':'取消',
   'todo.dated':'有时间','todo.undated':'无时间','todo.clearDue':'去掉时间','todo.addDue':'加时间',
+  'pc.active':'在用电脑','pc.idle':'电脑开着没人',
   'wk.an.title':'每日小结','wk.an.low':'共{h} · 覆盖{p}%，不做小结',
   'wk.an.none':'无记录',
   'stat.rd':'日','stat.rw':'周','stat.rm':'月',
@@ -2696,9 +2704,9 @@ let ANCHORS=[],anchorsLoaded=false;
 async function pullAnchors(){
   if(!cloud||!authed)return;
   try{
-    const {data,error}=await sb.from('anchors').select('*')
+    const {data,error}=await sb.from('anchors').select('id,at,label,source,payload')
       .gte('at',new Date(Date.now()-14*86400000).toISOString())
-      .order('at',{ascending:true}).limit(500);
+      .order('at',{ascending:true}).limit(3000);
     if(!error&&data)ANCHORS=data;
     anchorsLoaded=true;
     if(_tab==='today')renderToday();
@@ -3629,6 +3637,39 @@ const CARE_ICON='<svg class="tlg-fig" viewBox="314 146 626 960" aria-hidden="tru
  +'<path d="M 425.0 151.5 L 472.0 154.5 L 515.0 175.5 L 543.5 205.0 L 555.5 227.0 L 564.5 258.0 L 561.5 307.0 L 538.0 353.5 L 520.0 371.5 L 490.0 389.5 L 444.5 400.0 L 467.0 421.5 L 470.5 444.0 L 455.5 469.0 L 429.5 477.0 L 464.5 552.0 L 525.5 390.0 L 544.0 358.5 L 569.5 338.0 L 601.0 325.5 L 632.0 322.5 L 656.0 326.5 L 689.0 337.5 L 719.0 355.5 L 744.0 378.5 L 778.5 422.0 L 819.5 487.0 L 851.5 549.0 L 885.5 643.0 L 891.5 693.0 L 882.5 728.0 L 856.5 762.0 L 823.5 781.0 L 852.0 782.5 L 876.0 790.5 L 897.5 809.0 L 908.5 830.0 L 933.5 1027.0 L 929.5 1061.0 L 909.5 1087.0 L 880.0 1099.5 L 658.0 1099.5 L 636.0 1091.5 L 623.0 1080.5 L 611.0 1092.5 L 592.0 1099.5 L 436.0 1099.5 L 419.0 1092.5 L 408.5 1081.0 L 403.5 1066.0 L 410.5 1041.0 L 432.0 1024.5 L 483.0 1003.5 L 492.5 987.0 L 406.5 757.0 L 405.5 734.0 L 412.5 711.0 L 424.5 695.0 L 448.5 679.0 L 418.0 655.5 L 394.5 619.0 L 367.5 556.0 L 346.5 477.0 L 344.5 449.0 L 351.5 420.0 L 367.0 401.5 L 396.5 389.0 L 364.5 369.0 L 339.5 342.0 L 326.5 317.0 L 319.5 286.0 L 320.5 251.0 L 335.5 210.0 L 358.0 182.5 L 388.0 162.5 L 425.0 151.5 L 601.0 559.5 L 552.5 643.0 L 526.0 667.5 L 656.5 652.0 L 601.0 559.5 L 557.0 788.5 L 551.5 793.0 L 611.5 970.0 L 634.5 835.0 L 646.5 809.0 L 667.5 790.0 L 557.0 788.5 Z"/></svg>';
 // 小运动: the stretch after AutoLife's sit-too-long reminder (2026-09-10).
 // Flexing figure after her doodle; codex-imagegen silhouette traced with potrace; exercise green.
+// PC presence runs (2026-09-10, her ask): consecutive pings of the same state
+// collapse into one vertical bar in the gutter with an icon at its midpoint.
+// 在用 = keyboard/mouse moved in the 10-minute window; 开着 = machine on, no
+// input. Icons: codex-imagegen silhouettes traced with potrace.
+const PC_ACTIVE_ICON='<svg class="tlg-pcico" viewBox="72 112 1111 1018" aria-hidden="true"><path fill-rule="evenodd" d="M145 1109C130 1104 127 1095 131 1074C132 1068 135 1052 137 1038C140 1025 148 978 156 935L170 856L167 854C159 848 151 838 147 827C146 821 140 785 121 658C105 553 100 520 94 489C91 471 92 465 96 455C111 424 161 424 176 455C179 464 197 563 209 643C211 652 214 674 217 691C220 708 223 733 225 745C229 776 226 772 251 772C263 772 273 772 273 771C273 771 270 769 267 767C252 758 238 738 232 715C224 683 228 621 241 566C276 423 386 303 482 303L495 303L492 296C458 228 505 146 584 133C671 119 741 213 704 294C674 356 597 382 541 349C533 345 533 345 535 352C536 354 537 360 538 364C548 411 559 463 564 486C570 516 573 525 574 527C578 531 613 525 670 509C723 495 738 494 760 505C780 516 797 547 791 566L791 568L877 568L963 568L968 554C971 546 990 494 1011 438C1032 383 1049 336 1050 335C1052 326 1059 323 1077 323C1093 323 1097 325 1101 332L1103 337L1099 348C1096 360 1077 413 1072 426C1070 431 1065 447 1059 462C1054 478 1043 508 1036 528C1028 549 1019 575 1015 585C1012 595 1008 604 1008 604C1007 605 1007 606 1007 606C1007 607 1039 607 1078 607C1157 607 1153 607 1159 614C1163 619 1164 623 1164 643C1164 673 1161 677 1137 678L1124 678L1124 730C1124 758 1124 850 1125 933C1126 1098 1126 1093 1121 1100C1110 1114 1080 1115 1068 1101C1066 1098 1064 1095 1063 1092C1062 1085 1061 1016 1060 838L1060 678L897 678C807 678 734 679 733 679C733 680 732 772 732 883C732 1074 732 1087 731 1091C728 1098 725 1102 718 1105L712 1108L628 1108C527 1108 530 1108 520 1098C513 1090 512 1080 513 1054C514 1042 515 1011 516 984C518 927 519 901 521 860C524 813 524 798 523 795C521 790 519 790 500 789L483 789L487 793C505 811 499 847 478 857L474 858L474 866C474 870 475 890 476 911C478 932 480 969 482 992C483 1015 485 1045 486 1057C488 1094 487 1099 479 1105C468 1113 446 1113 437 1104C430 1098 430 1099 427 1050C425 1025 422 972 420 932C417 888 415 858 414 858C413 856 238 855 233 856C231 857 232 854 225 894C222 908 218 933 215 950C212 966 205 1004 199 1034C188 1099 189 1095 185 1100C178 1110 159 1114 145 1109ZM674 1033L672 1030L672 854L672 678L646 678C606 678 605 677 605 642C605 622 606 618 610 613C616 607 616 607 666 607L712 607L712 604C710 598 711 579 713 576C716 570 722 568 735 568L746 568L744 566C741 563 734 562 726 562C719 563 716 564 677 578C604 606 556 617 532 612C510 607 500 597 485 560C472 532 470 527 469 528C466 528 447 580 443 598C439 621 437 657 441 661C442 661 457 664 476 667C536 676 565 681 576 683C604 691 621 706 626 729C631 749 631 766 621 970L619 1016L621 1020C624 1027 628 1028 653 1032C664 1034 674 1036 674 1036C675 1037 676 1037 676 1037C676 1037 675 1035 674 1033Z"/></svg>';
+const PC_IDLE_ICON='<svg class="tlg-pcico" viewBox="43 267 1167 719" aria-hidden="true"><path fill-rule="evenodd" d="M72 965C60 959 61 939 75 935C77 935 118 934 167 934C216 933 260 933 266 932L277 932L273 926C271 923 269 918 268 916C268 913 260 881 250 844C231 764 189 596 176 547C155 467 145 424 140 406C119 328 120 332 120 325C121 313 129 304 141 300C152 297 192 287 194 287C201 287 210 293 213 299C215 306 243 408 261 475C270 509 291 589 297 612C300 624 309 655 316 682C328 728 336 755 341 775C359 839 359 838 368 844C377 851 346 849 644 861C703 864 762 866 775 867C788 868 831 869 871 871C911 873 959 875 978 875C997 876 1034 878 1060 879C1107 881 1111 881 1117 884C1129 891 1131 902 1122 920C1119 926 1116 931 1116 931C1116 932 1130 932 1146 932C1180 932 1182 932 1187 939C1194 947 1190 962 1180 966C1175 968 76 967 72 965Z"/></svg>';
+function pcState(a){
+  const k=String(a.label||'');
+  if(!/^电脑 /.test(k))return null;
+  if(/pc_idle|pc_last_active/.test(k))return 'idle';
+  const p=a.payload||{}; const inp=p.input||{};
+  const keys=Number(inp.keys||0)+Number(inp.clicks||0);
+  const act=Number(p.active_secs||0);
+  if(p.active_secs==null&&!p.input)return 'active';   // old pings carried no payload
+  return (keys>0||act>=180)?'active':'idle';
+}
+// runs for one visual day: [{state,ws,we}] in window minutes
+function pcRuns(iso){
+  const pts=ANCHORS.filter(a=>a.source==='pc').map(a=>{
+    const d=new Date(a.at); if(isNaN(d))return null;
+    const st=pcState(a); if(!st)return null;
+    return {t:d.getTime(),st};
+  }).filter(Boolean).sort((a,b)=>a.t-b.t);
+  const runs=[]; const W0=w0ms(iso);
+  pts.forEach(p=>{
+    const last=runs[runs.length-1];
+    // a ping summarises the 10 minutes before it; same state within 15 min joins
+    if(last&&last.st===p.st&&p.t-last.tEnd<=15*60000){last.tEnd=p.t;return}
+    runs.push({st:p.st,tStart:p.t-10*60000,tEnd:p.t});
+  });
+  return runs.map(r=>({state:r.st,ws:Math.round((r.tStart-W0)/60000),we:Math.round((r.tEnd-W0)/60000)}))
+    .filter(r=>r.we>0&&r.ws<1440);
+}
 const IS_MINI=/^小运动$/;
 const MINI_ICON='<svg class="tlg-fig tlg-fig-mini" viewBox="341 62 601 1128" aria-hidden="true"><path fill-rule="evenodd" d="M392 1170C376 1167 369 1159 372 1147C375 1137 379 1130 401 1108C435 1070 436 1067 433 993C429 915 431 900 451 857C467 824 467 826 468 764C468 738 469 715 469 712C470 710 471 702 472 695C474 678 477 659 482 641C486 627 489 618 504 574C514 546 516 533 515 510C513 487 511 479 494 447L483 427L478 438C471 452 459 470 449 482C441 492 441 490 440 512C439 537 436 547 421 580C405 616 403 623 412 635C424 652 430 671 427 689C425 702 416 704 410 692L407 686L407 693C408 698 408 701 412 708C422 726 415 734 395 728C368 719 356 687 364 641C367 622 367 617 366 591C362 537 364 516 377 484C386 464 387 457 390 434C394 406 399 388 408 371C410 368 411 362 412 358C418 317 438 295 482 280C526 265 544 249 554 216C558 206 558 200 554 190C553 185 551 177 549 171C539 131 558 97 595 85C606 81 635 81 646 85C684 96 705 127 697 162C695 173 692 180 677 212C662 243 650 254 633 251C624 249 623 250 625 255C630 264 655 268 674 263C710 253 734 257 760 276L763 278L773 275C792 270 817 272 832 280C838 283 838 283 838 279C836 272 835 261 834 245C832 213 824 188 816 190C815 191 812 192 808 193C792 199 772 196 764 187C750 170 773 131 798 132C815 132 844 145 854 157C879 187 909 243 917 276C928 317 923 333 897 345C842 371 797 379 756 370C734 365 735 365 725 390C721 400 714 415 711 422C701 443 697 463 697 492C697 516 700 530 714 566C742 636 752 692 749 759C746 828 746 830 755 852C775 905 777 921 775 996C773 1055 774 1059 785 1077C797 1097 807 1108 826 1122C843 1135 847 1139 850 1146C858 1163 842 1172 806 1171C788 1170 780 1168 763 1160C753 1155 745 1152 738 1151C711 1144 707 1135 719 1102L724 1088L724 1076C723 1054 711 1016 692 978C675 941 672 928 671 890C671 860 671 859 663 838C655 816 648 797 640 772C632 744 616 692 613 683C612 679 611 676 611 676C611 676 606 689 601 706C583 759 563 813 549 845C537 873 537 871 536 895C534 933 531 945 510 984C490 1021 486 1035 481 1066C479 1082 480 1086 484 1098C492 1125 489 1137 471 1145C466 1147 459 1152 454 1155C435 1168 411 1174 392 1170Z"/></svg>';
 function tlAnchorGutter(iso){
@@ -3636,6 +3677,7 @@ function tlAnchorGutter(iso){
     return String(Math.floor(c/60)).padStart(2,'0')+':'+String(c%60).padStart(2,'0')};
   const rows=[];
   ANCHORS.forEach(a=>{
+    if(a.source==='pc')return;   // drawn as state bars below, not as rows
     const d=new Date(a.at);if(isNaN(d))return;
     const aIso=lDate(new Date(d.getTime()-TL_H0*3600000));
     if(aIso!==iso)return;
@@ -3661,9 +3703,21 @@ function tlAnchorGutter(iso){
   });
   // collision nudge: close-together anchors (e.g. 到店+离店 1min apart) stack
   // downward instead of overprinting; the printed time stays the true time
+  // PC presence bars: one per run, icon at the midpoint, label = span + state
+  const bars=pcRuns(iso).map(r=>{
+    const top=(r.ws-TL_CLIP_FROM)/60*TL_HPX, bot=(r.we-TL_CLIP_FROM)/60*TL_HPX;
+    if(bot<0||top>TL_BODY_PX)return '';
+    const t0=Math.max(top,0), t1=Math.min(bot,TL_BODY_PX), h=Math.max(t1-t0,3);
+    const mid=t0+h/2, mins=r.we-r.ws;
+    const lab=`${fmm(r.ws)}–${fmm(r.we)} ${t(r.state==='active'?'pc.active':'pc.idle')}`;
+    return `<div class="tlg-pcbar tlg-pc-${r.state}" style="top:${t0.toFixed(1)}px;height:${h.toFixed(1)}px"></div>`
+      +`<div class="tlg-pcmark tlg-pc-${r.state}" style="top:${mid.toFixed(1)}px" title="${esc(lab)}">`
+      +(r.state==='active'?PC_ACTIVE_ICON:PC_IDLE_ICON)
+      +(mins>=25?`<span class="tlg-x">${esc(lab)}</span>`:'')+`</div>`;
+  }).join('');
   rows.sort((a,b)=>a.top-b.top);
   let prevBottom=-1e9;
-  return rows.map(r=>{
+  return bars+rows.map(r=>{
     const top=Math.max(r.top,prevBottom);
     prevBottom=top+15;
     // the note she dictates onto a 个护 row stays OFF the surface — tap the
