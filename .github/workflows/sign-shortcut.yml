@@ -1,0 +1,27 @@
+name: sign-shortcut
+on:
+  push:
+    paths: ["shortcuts/unsigned/*.shortcut"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sign:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sign every unsigned shortcut for anyone
+        run: |
+          mkdir -p shortcuts/signed
+          for f in shortcuts/unsigned/*.shortcut; do
+            n=$(basename "$f")
+            shortcuts sign --mode anyone --input "$f" --output "shortcuts/signed/$n"
+            ls -la "shortcuts/signed/$n"
+          done
+      - name: Commit signed files back
+        run: |
+          git config user.name flkfz3
+          git config user.email flkfz3@users.noreply.github.com
+          git add shortcuts/signed
+          git commit -m "sign shortcuts" || echo "nothing to commit"
+          git push

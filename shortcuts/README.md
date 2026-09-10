@@ -1,0 +1,1 @@
+Shortcut sources compiled with Cherri on the cluster. Drop the unsigned .shortcut into unsigned/, push, and the macOS runner signs it (mode anyone) into signed/. The signed file imports on iPhone by opening it in Files.
