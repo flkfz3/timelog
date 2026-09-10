@@ -1651,7 +1651,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-10k';
+const BUILD='2026-09-10l';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -3715,12 +3715,15 @@ function tlAnchorGutter(iso){
     return `<div class="tlg-pcbar tlg-pc-${r.state}" style="top:${t0.toFixed(1)}px;height:${h.toFixed(1)}px" title="${esc(lab)}"></div>`;
   }).join('');
   rows.sort((a,b)=>a.top-b.top);
-  let prevBottom=-1e9;
+  // rows are centred on their top (translateY(-50%)), so two neighbours need
+  // half of each height between their centres; icon rows are 20px, a plain
+  // anchor whose text wraps to two lines (11+ chars at mobile width) 27px
+  const rowH=r=>(r.care||r.pc)?20:(String(r.label).length>10?27:15);
+  let prevCenter=-1e9, prevH=0;
   return bars+rows.map(r=>{
-    const top=Math.max(r.top,prevBottom);
-    // row height: icon rows 20px; a plain anchor whose text wraps to two
-    // lines (about 11+ chars at the mobile width) needs 27px, else 15px
-    prevBottom=top+((r.care||r.pc)?20:(String(r.label).length>10?27:15));
+    const h=rowH(r);
+    const top=Math.max(r.top,prevCenter+prevH/2+h/2+1);
+    prevCenter=top; prevH=h;
     // the note she dictates onto a 个护 row stays OFF the surface — tap the
     // figure to open the same detail drawer a block gets (her 2026-08-16 ask)
     if(r.pc)return `<div class="tlg-anchor tlg-pcmark tlg-pc-${r.pc}" style="top:${top.toFixed(1)}px" title="${esc(r.label)}">`
