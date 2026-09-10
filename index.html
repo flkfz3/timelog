@@ -1651,7 +1651,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-10j';
+const BUILD='2026-09-10k';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -3718,7 +3718,9 @@ function tlAnchorGutter(iso){
   let prevBottom=-1e9;
   return bars+rows.map(r=>{
     const top=Math.max(r.top,prevBottom);
-    prevBottom=top+((r.care||r.pc)?20:15);   // icon rows are taller than a text row
+    // row height: icon rows 20px; a plain anchor whose text wraps to two
+    // lines (about 11+ chars at the mobile width) needs 27px, else 15px
+    prevBottom=top+((r.care||r.pc)?20:(String(r.label).length>10?27:15));
     // the note she dictates onto a 个护 row stays OFF the surface — tap the
     // figure to open the same detail drawer a block gets (her 2026-08-16 ask)
     if(r.pc)return `<div class="tlg-anchor tlg-pcmark tlg-pc-${r.pc}" style="top:${top.toFixed(1)}px" title="${esc(r.label)}">`
