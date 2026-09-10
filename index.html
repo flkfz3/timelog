@@ -895,6 +895,13 @@
   .todo-row:last-child{border-bottom:none}
   .todo-row.overdue{background:var(--danger-soft);border-radius:6px}
   .todo-row.done .td-title{text-decoration:line-through;color:var(--muted)}
+.todo-row .td-edit{flex-shrink:0;border:none;background:none;color:var(--muted);
+    font-size:15px;padding:2px 6px;cursor:pointer}
+.todo-row.editing{flex-direction:column;align-items:stretch;gap:8px}
+.todo-row.editing textarea{width:100%;box-sizing:border-box;font:inherit;
+    padding:8px;border:1px solid var(--line);border-radius:6px;resize:vertical}
+.todo-row.editing .te-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.todo-row.editing .te-bar input[type=date]{flex:1 1 140px}
   .td-due{font-size:12px;color:var(--muted);flex-shrink:0;
     font-variant-numeric:tabular-nums}
   .td-due.late{color:var(--danger);font-weight:700}
@@ -1635,7 +1642,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-08-19a';
+const BUILD='2026-09-09a';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1786,6 +1793,7 @@ const I18N={
   'todo.done':'Done · last 14 days',
   'todo.overdue':'{n}d overdue','todo.dueToday':'due today',
   'todo.empty':'All done ★',
+  'todo.edit':'Edit','todo.save':'Save','todo.cancel':'Cancel',
   'wk.an.title':'Daily recap','wk.an.low':'{h} logged · {p}% of the day — no recap',
   'wk.an.none':'nothing logged',
   'stat.rd':'Day','stat.rw':'Week','stat.rm':'Month',
@@ -1955,6 +1963,7 @@ const I18N={
   'todo.done':'已完成 · 近14天',
   'todo.overdue':'逾期{n}天','todo.dueToday':'今天到期',
   'todo.empty':'全部完成 ★',
+  'todo.edit':'改','todo.save':'保存','todo.cancel':'取消',
   'wk.an.title':'每日小结','wk.an.low':'共{h} · 覆盖{p}%，不做小结',
   'wk.an.none':'无记录',
   'stat.rd':'日','stat.rw':'周','stat.rm':'月',
@@ -6706,9 +6715,39 @@ function todoRowHtml(x){
       due=`<span class="td-due">${esc(x.due_date.slice(5))}</span>`;
     }
   }
+  if(_todoEdit===x.id){
+    return `<div class="todo-row editing">
+      <textarea id="te-title" rows="3">${esc(x.title||'')}</textarea>
+      <div class="te-bar">
+        <input type="date" id="te-due" value="${esc(x.due_date||'')}">
+        <button class="primary" onclick="saveTodo('${x.id}')">${esc(t('todo.save'))}</button>
+        <button onclick="cancelTodoEdit()">${esc(t('todo.cancel'))}</button>
+      </div></div>`;
+  }
   return `<div class="todo-row${cls}${x.done?' done':''}">
     <input type="checkbox" ${x.done?'checked':''} onchange="toggleTodo('${x.id}',this.checked)">
-    <span class="td-title">${esc(x.title||'')}</span>${due}</div>`;
+    <span class="td-title">${esc(x.title||'')}</span>${due}
+    <button class="td-edit" onclick="editTodo('${x.id}')" title="${esc(t('todo.edit'))}">✎</button></div>`;
+}
+// Every todo is editable in place: title and due date (her 2026-09-09 ask).
+// One row edits at a time; saving pulls the list back so the order follows
+// the new date.
+let _todoEdit=null;
+function editTodo(id){_todoEdit=id;renderTodos();
+  const el=document.getElementById('te-title');if(el){el.focus();}}
+function cancelTodoEdit(){_todoEdit=null;renderTodos();}
+async function saveTodo(id){
+  if(!cloud||!authed){toast(t('msg.authFail'),'err');return}
+  const title=(document.getElementById('te-title')?.value||'').trim();
+  if(!title){toast(t('msg.needName'),'err');return}
+  const due=document.getElementById('te-due')?.value||null;
+  try{
+    const {error}=await sb.from('todos').update({title,due_date:due}).eq('id',id);
+    if(error)throw error;
+    _todoEdit=null;
+    toast(t('msg.saved'),'ok');
+    await pullTodos();renderTodos();
+  }catch(e){console.warn('saveTodo',e);toast(t('msg.cloudErr'),'err')}
 }
 // Meetings are not to-dos: they happen whether or not she acts, and she
 // cannot move them alone. They get their own list here, by day, so the
