@@ -895,6 +895,7 @@
   .todo-row:last-child{border-bottom:none}
   .todo-row.overdue{background:var(--danger-soft);border-radius:6px}
   .todo-row.done .td-title{text-decoration:line-through;color:var(--muted)}
+.td-group{font-size:12px;color:var(--muted);margin:10px 4px 2px;letter-spacing:.5px}
 .todo-row .td-edit{flex-shrink:0;border:none;background:none;color:var(--muted);
     font-size:15px;padding:2px 6px;cursor:pointer}
 .todo-row.editing{flex-direction:column;align-items:stretch;gap:8px}
@@ -1397,8 +1398,6 @@
   </section>
 
   <section id="tab-sleep" class="hidden">
-    <div class="card" id="cycCard"><div class="sc-title" data-i18n="cyc.title"></div>
-      <div id="cycBox"></div></div>
     <div class="card bw-card"><div class="sc-title"><span data-i18n="bw.title"></span>
         <span class="bw-wk" id="bwSleepWk"></span></div>
       <div id="bwSleepBox"></div></div>
@@ -1441,6 +1440,8 @@
       <div class="card"><div class="sc-title" data-i18n="h.kcal"></div><div id="kcalBox"></div></div>
       <div class="card"><div class="sc-title" data-i18n="cmp.title"></div><div id="cmpDietBox"></div></div>
     </div>
+    <div class="card"><div class="sc-title" data-i18n="rcp.title"></div>
+      <div id="rcpBox"></div></div>
     <div class="card fold-card">
       <details class="kt-wrap">
         <summary class="kt-sum"><span data-i18n="health.diet"></span>
@@ -1466,6 +1467,8 @@
       <div class="card"><div class="sc-title" data-i18n="ex.types"></div><div id="exTypesBox"></div></div>
       <div class="card"><div class="sc-title" data-i18n="cmp.title"></div><div id="cmpExBox"></div></div>
     </div>
+    <div class="card" id="cycCard"><div class="sc-title" data-i18n="cyc.title"></div>
+      <div id="cycBox"></div></div>
     <div class="h-sec" id="bodySec"><span data-i18n="ex.body"></span></div>
     <div class="card"><div class="sc-title" data-i18n="h.weight"></div>
       <div id="weightBox"></div></div>
@@ -1521,7 +1524,6 @@
       <input id="memo-q" data-ph="memo.search.ph" oninput="renderMemos()"
         style="margin-bottom:6px">
       <div id="recoBox"></div>
-      <div id="rcpBox"></div>
       <div id="memoBox"></div>
     </div>
   </section>
@@ -1642,7 +1644,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-09a';
+const BUILD='2026-09-10a';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1794,6 +1796,7 @@ const I18N={
   'todo.overdue':'{n}d overdue','todo.dueToday':'due today',
   'todo.empty':'All done ★',
   'todo.edit':'Edit','todo.save':'Save','todo.cancel':'Cancel',
+  'todo.dated':'With a date','todo.undated':'No date','todo.clearDue':'Remove date','todo.addDue':'Add date',
   'wk.an.title':'Daily recap','wk.an.low':'{h} logged · {p}% of the day — no recap',
   'wk.an.none':'nothing logged',
   'stat.rd':'Day','stat.rw':'Week','stat.rm':'Month',
@@ -1964,6 +1967,7 @@ const I18N={
   'todo.overdue':'逾期{n}天','todo.dueToday':'今天到期',
   'todo.empty':'全部完成 ★',
   'todo.edit':'改','todo.save':'保存','todo.cancel':'取消',
+  'todo.dated':'有时间','todo.undated':'无时间','todo.clearDue':'去掉时间','todo.addDue':'加时间',
   'wk.an.title':'每日小结','wk.an.low':'共{h} · 覆盖{p}%，不做小结',
   'wk.an.none':'无记录',
   'stat.rd':'日','stat.rw':'周','stat.rm':'月',
@@ -6720,7 +6724,8 @@ function todoRowHtml(x){
       <textarea id="te-title" rows="3">${esc(x.title||'')}</textarea>
       <div class="te-bar">
         <input type="date" id="te-due" value="${esc(x.due_date||'')}">
-        <button class="primary" onclick="saveTodo('${x.id}')">${esc(t('todo.save'))}</button>
+        <button class="primary" onclick="saveTodo('${x.id}')">${esc(t(x.due_date?'todo.save':'todo.addDue'))}</button>
+        ${x.due_date?`<button onclick="saveTodo('${x.id}',true)">${esc(t('todo.clearDue'))}</button>`:''}
         <button onclick="cancelTodoEdit()">${esc(t('todo.cancel'))}</button>
       </div></div>`;
   }
@@ -6736,11 +6741,12 @@ let _todoEdit=null;
 function editTodo(id){_todoEdit=id;renderTodos();
   const el=document.getElementById('te-title');if(el){el.focus();}}
 function cancelTodoEdit(){_todoEdit=null;renderTodos();}
-async function saveTodo(id){
+async function saveTodo(id,clearDue){
   if(!cloud||!authed){toast(t('msg.authFail'),'err');return}
   const title=(document.getElementById('te-title')?.value||'').trim();
   if(!title){toast(t('msg.needName'),'err');return}
-  const due=document.getElementById('te-due')?.value||null;
+  // clearDue: one tap turns a dated todo into an undated one
+  const due=clearDue?null:(document.getElementById('te-due')?.value||null);
   try{
     const {error}=await sb.from('todos').update({title,due_date:due}).eq('id',id);
     if(error)throw error;
@@ -6842,8 +6848,10 @@ function renderTodos(){
       return a.due_date<b.due_date?-1:1;
     return (b.created_at||'').localeCompare(a.created_at||'');
   });
-  document.getElementById('todoOpenBox').innerHTML=
-    open.length?open.map(todoRowHtml).join('')
+  const dated=open.filter(x=>x.due_date), undated=open.filter(x=>!x.due_date);
+  document.getElementById('todoOpenBox').innerHTML=open.length?
+    (dated.length?`<div class="td-group">${esc(t('todo.dated'))}</div>`+dated.map(todoRowHtml).join(''):'')+
+    (undated.length?`<div class="td-group">${esc(t('todo.undated'))}</div>`+undated.map(todoRowHtml).join(''):'')
     :`<div class="rev-empty">${esc(t('todo.empty'))}</div>`;
   // 已完成: last 14 days, collapsed by default (details element)
   const since=isoDaysBack(14)[0];
