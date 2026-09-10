@@ -568,8 +568,8 @@
 .tlg-pcbar{position:absolute;left:1px;width:3px;border-radius:2px;pointer-events:none}
 .tlg-pc-active{--pc:#475569}.tlg-pc-idle{--pc:#cbd5e1}
 .tlg-pcbar{background:var(--pc)}
-.tlg-anchor.tlg-pcmark{color:var(--pc);padding-left:7px;align-items:center}
-.tlg-pcico{height:10px;width:15px;flex:0 0 auto;fill:var(--pc)}
+.tlg-anchor.tlg-pcmark{color:var(--pc);padding-left:7px;align-items:center;white-space:nowrap;max-width:none}
+.tlg-pcico{height:12px;width:17px;flex:0 0 auto;fill:var(--pc)}
 .tlg-fig-mini{width:6.9px;fill:#22a06b}
 .tlg-care.tlg-mini .tlg-x{color:#22a06b}
   .tlg-care .tlg-x{color:var(--care-ink,#0284c7)}
@@ -1651,7 +1651,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-10g';
+const BUILD='2026-09-10h';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -3640,7 +3640,7 @@ const CARE_ICON='<svg class="tlg-fig" viewBox="314 146 626 960" aria-hidden="tru
 // collapse into one vertical bar in the gutter with an icon at its midpoint.
 // 在用 = keyboard/mouse moved in the 10-minute window; 开着 = machine on, no
 // input. One plain laptop pictogram for both; dark = in use, light = idle.
-const PC_ICON='<svg class="tlg-pcico" viewBox="0 0 24 16" aria-hidden="true"><rect x="3" y="0" width="18" height="11" rx="1.6"/><rect x="0" y="12.5" width="24" height="3" rx="1.2"/></svg>';
+const PC_ICON='<svg class="tlg-pcico" viewBox="0 0 24 17" aria-hidden="true"><path fill-rule="evenodd" d="M3.8 0h16.4a1.8 1.8 0 0 1 1.8 1.8v8.4a1.8 1.8 0 0 1-1.8 1.8H3.8A1.8 1.8 0 0 1 2 10.2V1.8A1.8 1.8 0 0 1 3.8 0zm.7 2.2v7.6h15V2.2z"/><rect x="0" y="13.5" width="24" height="3.2" rx="1.4"/></svg>';
 function pcState(a){
   const k=String(a.label||'');
   if(!/^电脑 /.test(k))return null;
