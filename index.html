@@ -4535,14 +4535,28 @@ async function saveRecord(){
   if(!name){toast(t('msg.needName'),'err');return}
   if(!date||!st){toast(t('msg.needTime'),'err');return}
   const start_at=toTimestamptz(date,st,tz);
-  const end_at=en?toTimestamptz(date,en,tz):null;
+  // 2026-09-12: an end time earlier than the start means the block runs past
+  // midnight (23:30 -> 00:40). Computing it on the same date produced a
+  // backwards interval, the database refused the row, and the form could only
+  // say "云端加载出错". Roll it to the next day and record date_end.
+  let end_at=en?toTimestamptz(date,en,tz):null;
+  let date_end=null;
+  if(end_at){
+    if(new Date(end_at)<=new Date(start_at)){
+      const d2=shiftISO(date,1);
+      end_at=toTimestamptz(d2,en,tz);
+      date_end=d2;
+    }else{
+      date_end=date;
+    }
+  }
   const id='manual:'+uid();
   const row={
     id, name, category:cat, tags, notes:notes||null, source:'manual',
     start_at, end_at, in_kaileme:inK,
     parallel:document.getElementById('f-parallel').checked,
     // legacy fields kept consistent so both apps render the row
-    date_start:date, date_end:null, start_time:st, end_time:en||null, tz,
+    date_start:date, date_end, start_time:st, end_time:en||null, tz,
     venue_mode:null, venue_detail:null, role:null, edited:true,
     created_at:new Date().toISOString()
   };
@@ -4557,7 +4571,12 @@ async function saveRecord(){
     document.getElementById('f-parallel').checked=false;
     await pullCloud();
     switchTab('today');
-  }catch(e){console.warn('saveRecord',e);toast(t('msg.cloudErr'),'err')}
+  }catch(e){
+    console.warn('saveRecord',e);
+    const dup=e&&(e.code==='23P01'||/exclusion|overlap/i.test(e.message||''));
+    const detail=e&&e.message?(' — '+String(e.message).slice(0,90)):'';
+    toast(dup?t('msg.overlap'):t('msg.cloudErr')+detail,'err');
+  }
 }
 
 // ---- Review (problems + gaps) ----------------------------------------
