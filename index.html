@@ -832,6 +832,21 @@
     border-top:1px dashed var(--line);margin-top:8px}
   #hbBox .memo-sec{margin-top:14px}
   #hbBox .memo-sec:first-child{margin-top:0}
+  /* 置顶: one idiom for every list on this tab. The arrow means "to top";
+     a pinned row keeps a left accent bar so the reason it is up there is
+     visible without reading the button state. */
+  .pin-btn{flex-shrink:0;border:none;background:none;cursor:pointer;
+    color:var(--muted);font-size:14px;line-height:1;padding:3px 5px;
+    border-radius:5px;opacity:.55}
+  .pin-btn:hover{opacity:1;background:var(--line)}
+  .pin-btn.on{color:var(--accent);opacity:1;font-weight:700}
+  .pinned{border-left:2px solid var(--accent);padding-left:8px;
+    border-radius:0 6px 6px 0}
+  .rc-tx{flex:1 1 auto;font-size:14px;color:var(--ink)}
+  .rc-note{font-size:12px;color:var(--muted);line-height:1.5;
+    padding:0 6px 8px 6px;margin-top:-4px}
+  #rcBox .memo-sec{margin-top:14px}
+  #rcBox .memo-sec:first-child{margin-top:0}
   .memo-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;
     border-bottom:1px dashed var(--line);font-size:14px}
   .memo-row .m-tm{color:var(--muted);font-size:12px;flex-shrink:0;
@@ -1523,6 +1538,10 @@
     <div class="card"><div class="chart-title" data-i18n="sc.ddl"></div>
       <div id="todoDdlBox"></div></div>
     <div class="card">
+      <div class="chart-title" data-i18n="rc.title"></div>
+      <div id="rcBox"></div>
+    </div>
+    <div class="card">
       <div class="chart-title" data-i18n="tab.memo"></div>
       <div class="row" style="gap:10px;margin-bottom:12px;flex-wrap:wrap">
         <input id="memo-new" data-ph="memo.add.ph" style="flex:1 1 160px"
@@ -1662,7 +1681,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-14a';
+const BUILD='2026-09-14c';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1810,6 +1829,10 @@ const I18N={
   'memo.short':'Short-term','memo.long':'Long-term',
   'memo.longFold':'Long-term memos',
   'hb.title':'Handbook','hb.empty':'Nothing here yet',
+  'rc.title':'Recurring','rc.empty':'Nothing recurring yet',
+  'pin.on':'Pin to top','pin.off':'Unpin','pin.sec':'Pinned',
+  'rc.done':'done','rc.left':'{n}d','rc.today':'due today',
+  'rc.over':'{n}d overdue','rc.ask':'Next date (YYYY-MM-DD)',
   'todo.add.ph':'New todo…','todo.open':'To do',
   'todo.done':'Done · last 14 days',
   'todo.overdue':'{n}d overdue','todo.dueToday':'due today',
@@ -1981,6 +2004,10 @@ const I18N={
   'memo.short':'短期','memo.long':'长期',
   'memo.longFold':'长期备忘',
   'hb.title':'说明书','hb.empty':'还没有条目',
+  'rc.title':'循环','rc.empty':'还没有循环事项',
+  'pin.on':'置顶','pin.off':'取消置顶','pin.sec':'置顶',
+  'rc.done':'做了','rc.left':'还有{n}天','rc.today':'今天到期',
+  'rc.over':'逾期{n}天','rc.ask':'下次日期（YYYY-MM-DD）',
   'todo.add.ph':'新待办…','todo.open':'未完成',
   'mt.next2w':'未来两周的会','mt.none':'两周内没有会','mt.allday':'全天',
   'mt.classes':'课程','mt.today':'今天','mt.tomorrow':'明天',
@@ -2267,7 +2294,7 @@ async function refreshAll(){
   _cmtFetched.clear();   // butler replies land out-of-band — refetch threads
   await Promise.allSettled([pullCloud(),pullInsight(),pullActions(),pullHealth(),
     pullMemos(),pullTodos(),pullSpend(),pullWeekly(),pullHabits(),pullAch(),
-    pullHandbook(),
+    pullHandbook(),pullRecur(),
     pullSecInsights(),pullSiteUpdates(),pullAnchors(),pullComments(vTodayISO())]);
   renderActive();
   return _pullFails===0;
@@ -6651,10 +6678,11 @@ const RECO_ICON={book:'\u{1F4D6}',podcast:'\u{1F3A7}',video:'\u{25B6}',course:'\
 function renderRecos(){
   const host=document.getElementById('recoBox');
   if(!host)return;
-  const live=RECOS.filter(r=>r.status!=='存档');
+  const live=RECOS.filter(r=>r.status!=='存档')
+    .sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0));
   const done=RECOS.filter(r=>r.status==='存档');
   if(!RECOS.length){host.innerHTML='';return}
-  const row=r=>`<div class="reco-row${r.status==='存档'?' arch':''}">
+  const row=r=>`<div class="reco-row${r.status==='存档'?' arch':''}${r.pinned?' pinned':''}">
     <span class="reco-ic">${RECO_ICON[r.kind]||'\u{1F4CC}'}</span>
     <div class="reco-b">
       <div class="reco-t">${r.link?`<a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.title)}</a>`:esc(r.title)}
@@ -6662,6 +6690,7 @@ function renderRecos(){
       ${r.why?`<div class="reco-w">${esc(r.why)}</div>`:''}
       <div class="reco-m">${esc(r.heard_on||'')}${r.in_notion?' · 已入文献库':''}</div>
     </div>
+    ${pinBtn('recos',r)}
     <button class="reco-act" onclick="cycleReco('${r.id}')">${esc(r.status)}</button>
   </div>`;
   host.innerHTML=`<div class="memo-sec">${esc(t('reco.title'))}</div>`
@@ -6687,10 +6716,11 @@ function renderRecipes(){
   const host=document.getElementById('rcpBox');
   if(!host)return;
   if(!RECIPES.length){host.innerHTML='';return}
-  const row=r=>`<div class="rcp-row" onclick="this.classList.toggle('open')">
+  const row=r=>`<div class="rcp-row${r.pinned?' pinned':''}" onclick="this.classList.toggle('open')">
     <div class="rcp-h">
       <div class="rcp-t">${esc(r.name)}</div>
       <div class="rcp-k">${r.minutes?r.minutes+' min':''}${r.minutes&&r.kcal?' · ':''}${r.kcal?r.kcal+' kcal':''}</div>
+      ${pinBtn('recipes',r)}
     </div>
     <div class="rcp-b">
       <b>${esc(t('rcp.ing'))}</b><pre>${esc(r.ingredients||'')}</pre>
@@ -6699,7 +6729,8 @@ function renderRecipes(){
       <div class="rcp-m">${r.last_made?lDate(new Date(r.last_made+'T12:00:00')):''}${r.source?' · '+esc(r.source):''}</div>
     </div>
   </div>`;
-  host.innerHTML=`<div class="memo-sec">${esc(t('rcp.title'))}</div>`+RECIPES.map(row).join('');
+  const ordered=RECIPES.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0));
+  host.innerHTML=`<div class="memo-sec">${esc(t('rcp.title'))}</div>`+ordered.map(row).join('');
 }
 const RECO_NEXT={'想看':'在看','在看':'看完','看完':'存档','存档':'想看'};
 async function cycleReco(id){
@@ -6732,8 +6763,9 @@ function memoListHtml(list){
     const day=d?lDate(d):'—';
     const tm=d?String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'):'';
     if(day!==lastDay){html+=`<div class="memo-day">${day}</div>`;lastDay=day;}
-    html+=`<div class="memo-row"><span class="m-tm">${tm}</span>
+    html+=`<div class="memo-row${m.pinned?' pinned':''}"><span class="m-tm">${tm}</span>
       <span class="m-tx">${esc(m.content||'')}</span>
+      ${pinBtn('memos',m)}
       <button class="m-del" title="delete" onclick="delMemo('${m.id}')">✕</button></div>`;
   });
   return html;
@@ -6743,9 +6775,13 @@ function renderMemos(){
   const rows=MEMOS.filter(m=>!q||(m.content||'').toLowerCase().includes(q));
   const host=document.getElementById('memoBox');
   if(!rows.length){host.innerHTML=`<div class="rev-empty">${esc(t('memo.empty'))}</div>`;return}
-  const shortRows=rows.filter(m=>memoKind(m)==='short');
-  const longRows=rows.filter(m=>memoKind(m)==='long');
+  const pinRows=rows.filter(m=>m.pinned);
+  const plain=rows.filter(m=>!m.pinned);
+  const shortRows=plain.filter(m=>memoKind(m)==='short');
+  const longRows=plain.filter(m=>memoKind(m)==='long');
   let html='';
+  if(pinRows.length)
+    html+=`<div class="memo-sec">${esc(t('pin.sec'))}</div>`+memoListHtml(pinRows);
   // an empty half prints nothing at all — no bare heading
   if(shortRows.length)
     html+=`<div class="memo-sec">${esc(t('memo.short'))}</div>`+memoListHtml(shortRows);
@@ -6782,6 +6818,103 @@ async function delMemo(id){
   renderMemos();
 }
 
+// ---- Pinning ----------------------------------------------------------
+// Her 2026-09-14 ask: every list on this tab can pin an entry to the top.
+// One column (pinned) per table, one button, one leading 置顶 section, so
+// the gesture means the same thing everywhere.
+const PIN_ARR={todos:()=>TODOS,memos:()=>MEMOS,recos:()=>RECOS,
+  recurring_tasks:()=>RECUR,handbook:()=>HANDBOOK,recipes:()=>RECIPES};
+const PIN_DRAW={todos:()=>renderTodos(),memos:()=>renderMemos(),
+  recos:()=>renderRecos(),recurring_tasks:()=>renderRecur(),
+  handbook:()=>renderHandbook(),recipes:()=>renderRecipes()};
+function pinBtn(tbl,r){
+  return `<button class="pin-btn${r.pinned?' on':''}"
+    title="${esc(t(r.pinned?'pin.off':'pin.on'))}"
+    onclick="event.preventDefault();event.stopPropagation();togglePin('${tbl}','${r.id}')">\u2191</button>`;
+}
+async function togglePin(tbl,id){
+  if(!cloud||!authed){toast(t('msg.authFail'),'err');return}
+  const r=(PIN_ARR[tbl]?.()||[]).find(x=>String(x.id)===String(id));
+  if(!r)return;
+  const next=!r.pinned;
+  try{
+    const {error}=await sb.from(tbl).update({pinned:next}).eq('id',id);
+    if(error)throw error;
+    r.pinned=next;(PIN_DRAW[tbl]||function(){})();
+  }catch(e){console.warn('togglePin',e);toast(t('msg.cloudErr'),'err')}
+}
+
+// ---- Recurring --------------------------------------------------------
+// Things that come back but not always on a fixed clock: next_due is the
+// authority, interval_days only supplies the default roll-forward. Marking
+// one done with no interval asks for the next date instead of guessing.
+let RECUR=[],rcLoaded=false;
+async function pullRecur(){
+  if(!cloud||!authed)return;
+  try{
+    const {data,error}=await sb.from('recurring_tasks').select('*')
+      .eq('active',true).order('next_due',{ascending:true});
+    if(error)throw error;
+    RECUR=data||[];rcLoaded=true;
+    if(_tab==='todo')renderRecur();
+  }catch(e){console.warn('pullRecur',e);_pullFails++}
+}
+function renderRecur(){
+  const host=document.getElementById('rcBox');
+  if(!host)return;
+  if(!RECUR.length){host.innerHTML=`<div class="rev-empty">${esc(t('rc.empty'))}</div>`;return}
+  const today=vTodayISO();
+  const rowHtml=r=>{
+    const n=Math.round((new Date(r.next_due+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+    let due,cls='';
+    if(n<0){due=`<span class="td-due late">${esc(t('rc.over',{n:-n}))}</span>`;cls=' overdue'}
+    else if(n===0){due=`<span class="td-due late">${esc(t('rc.today'))}</span>`}
+    else{due=`<span class="td-due">${esc(r.next_due.slice(5))} · ${esc(t('rc.left',{n}))}</span>`}
+    return `<div class="todo-row${cls}${r.pinned?' pinned':''}">
+      <span class="rc-tx">${esc(r.title||'')}</span>${due}
+      ${pinBtn('recurring_tasks',r)}
+      <button class="ddl-add" onclick="recurDone('${r.id}')">${esc(t('rc.done'))}</button>
+    </div>`+(r.notes?`<div class="rc-note">${esc(r.notes)}</div>`:'');
+  };
+  const pins=RECUR.filter(r=>r.pinned), rest=RECUR.filter(r=>!r.pinned);
+  let html=pins.length?`<div class="memo-sec">${esc(t('pin.sec'))}</div>`+pins.map(rowHtml).join(''):'';
+  let lastTopic=null;
+  rest.forEach(r=>{
+    const topic=r.topic||'';
+    if(topic!==lastTopic){
+      if(topic)html+=`<div class="memo-sec">${esc(topic)}</div>`;
+      lastTopic=topic;
+    }
+    html+=rowHtml(r);
+  });
+  host.innerHTML=html;
+}
+async function recurDone(id){
+  if(!cloud||!authed){toast(t('msg.authFail'),'err');return}
+  const r=RECUR.find(x=>String(x.id)===String(id));if(!r)return;
+  const today=vTodayISO();
+  let next;
+  if(r.interval_days){
+    const d=new Date(today+'T00:00:00');
+    d.setDate(d.getDate()+r.interval_days);
+    next=d.toISOString().slice(0,10);
+  }else{
+    next=(prompt(t('rc.ask'),'')||'').trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(next))return;
+  }
+  const hist=Array.isArray(r.history)?r.history.slice():[];
+  hist.push(today);
+  try{
+    const {error}=await sb.from('recurring_tasks')
+      .update({last_done:today,next_due:next,history:hist,updated_at:new Date().toISOString()})
+      .eq('id',id);
+    if(error)throw error;
+    r.last_done=today;r.next_due=next;r.history=hist;
+    RECUR.sort((a,b)=>a.next_due<b.next_due?-1:1);
+    renderRecur();toast(t('msg.saved'),'ok');
+  }catch(e){console.warn('recurDone',e);toast(t('msg.cloudErr'),'err')}
+}
+
 // ---- Handbook ---------------------------------------------------------
 // Facts and procedures worth keeping after the thing is done, grouped by
 // topic. Written by the butler, read here; no editing UI on purpose.
@@ -6800,23 +6933,24 @@ function renderHandbook(){
   const host=document.getElementById('hbBox');
   if(!host)return;
   if(!HANDBOOK.length){host.innerHTML=`<div class="rev-empty">${esc(t('hb.empty'))}</div>`;return}
+  const entry=h=>{
+    const d=h.updated_at?new Date(h.updated_at):null;
+    return `<details class="kt-wrap${h.pinned?' pinned':''}"><summary class="kt-sum">
+      <span>${esc(h.title||'')}</span>${pinBtn('handbook',h)}<span class="kt-arrow">›</span></summary>
+      <div class="hb-body">${esc(h.body||'')}</div>
+      ${h.source?`<div class="hb-src">${esc(h.source)}</div>`
+                :(d?`<div class="hb-src">${lDate(d)}</div>`:'')}
+      </details>`;
+  };
+  const pins=HANDBOOK.filter(h=>h.pinned), rest=HANDBOOK.filter(h=>!h.pinned);
+  let html=pins.length?`<div class="memo-sec">${esc(t('pin.sec'))}</div>`+pins.map(entry).join(''):'';
   const byTopic=new Map();
-  HANDBOOK.forEach(h=>{
+  rest.forEach(h=>{
     if(!byTopic.has(h.topic))byTopic.set(h.topic,[]);
     byTopic.get(h.topic).push(h);
   });
-  let html='';
   byTopic.forEach((rows,topic)=>{
-    html+=`<div class="memo-sec">${esc(topic)}</div>`;
-    rows.forEach(h=>{
-      const d=h.updated_at?new Date(h.updated_at):null;
-      html+=`<details class="kt-wrap"><summary class="kt-sum">
-        <span>${esc(h.title||'')}</span><span class="kt-arrow">›</span></summary>
-        <div class="hb-body">${esc(h.body||'')}</div>
-        ${h.source?`<div class="hb-src">${esc(h.source)}</div>`
-                  :(d?`<div class="hb-src">${lDate(d)}</div>`:'')}
-        </details>`;
-    });
+    html+=`<div class="memo-sec">${esc(topic)}</div>`+rows.map(entry).join('');
   });
   host.innerHTML=html;
 }
@@ -6868,9 +7002,10 @@ function todoRowHtml(x){
         <button onclick="cancelTodoEdit()">${esc(t('todo.cancel'))}</button>
       </div></div>`;
   }
-  return `<div class="todo-row${cls}${x.done?' done':''}">
+  return `<div class="todo-row${cls}${x.done?' done':''}${x.pinned?' pinned':''}">
     <input type="checkbox" ${x.done?'checked':''} onchange="toggleTodo('${x.id}',this.checked)">
     <span class="td-title">${esc(x.title||'')}</span>${due}
+    ${pinBtn('todos',x)}
     <button class="td-edit" onclick="editTodo('${x.id}')" title="${esc(t('todo.edit'))}">✎</button></div>`;
 }
 // Every todo is editable in place: title and due date (her 2026-09-09 ask).
@@ -6987,8 +7122,10 @@ function renderTodos(){
       return a.due_date<b.due_date?-1:1;
     return (b.created_at||'').localeCompare(a.created_at||'');
   });
-  const dated=open.filter(x=>x.due_date), undated=open.filter(x=>!x.due_date);
+  const pins=open.filter(x=>x.pinned), plain=open.filter(x=>!x.pinned);
+  const dated=plain.filter(x=>x.due_date), undated=plain.filter(x=>!x.due_date);
   document.getElementById('todoOpenBox').innerHTML=open.length?
+    (pins.length?`<div class="td-group">${esc(t('pin.sec'))}</div>`+pins.map(todoRowHtml).join(''):'')+
     (dated.length?`<div class="td-group">${esc(t('todo.dated'))}</div>`+dated.map(todoRowHtml).join(''):'')+
     (undated.length?`<div class="td-group">${esc(t('todo.undated'))}</div>`+undated.map(todoRowHtml).join(''):'')
     :`<div class="rev-empty">${esc(t('todo.empty'))}</div>`;
@@ -7130,8 +7267,9 @@ function renderActive(){
     if(!weeklyLoaded)pullWeekly();if(!habitsLoaded)pullHabits();}
   else if(_tab==='sport'){renderSportTab();if(!healthLoaded)pullHealth();
     if(!weeklyLoaded)pullWeekly();if(!habitsLoaded)pullHabits();}
-  else if(_tab==='todo'){renderTodos();renderMemos();renderRecipes();renderHandbook();
-    if(!todoLoaded)pullTodos();if(!memoLoaded)pullMemos();if(!hbLoaded)pullHandbook();}
+  else if(_tab==='todo'){renderTodos();renderMemos();renderRecipes();renderHandbook();renderRecur();
+    if(!todoLoaded)pullTodos();if(!memoLoaded)pullMemos();if(!hbLoaded)pullHandbook();
+    if(!rcLoaded)pullRecur();}
   else if(_tab==='spend'){renderSpend();if(!spendLoaded)pullSpend();}
   else if(_tab==='ach'){renderAch();
     if(!achLoaded)pullAch();if(!actionsLoaded)pullActions();}
