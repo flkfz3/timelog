@@ -616,6 +616,7 @@
   .reco-act{flex:0 0 auto;font-size:11.5px;padding:3px 9px;border-radius:999px;
     border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}
   .rcp-row{border-bottom:1px solid var(--line);padding:7px 0}
+  .rcp-row:last-child{border-bottom:none}
   .rcp-h{display:flex;gap:8px;align-items:baseline;cursor:pointer;
     -webkit-tap-highlight-color:transparent}
   .rcp-t{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.35}
@@ -1685,7 +1686,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-14f';
+const BUILD='2026-09-14g';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -6734,7 +6735,7 @@ function renderRecipes(){
     </div>
   </div>`;
   const ordered=RECIPES.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0));
-  host.innerHTML=`<div class="memo-sec">${esc(t('rcp.title'))}</div>`+ordered.map(row).join('');
+  host.innerHTML=ordered.map(row).join('');
 }
 const RECO_NEXT={'想看':'在看','在看':'看完','看完':'存档','存档':'想看'};
 async function cycleReco(id){
