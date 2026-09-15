@@ -1682,7 +1682,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-14d';
+const BUILD='2026-09-14e';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -6710,7 +6710,7 @@ async function pullRecipes(){
     const {data,error}=await sb.from('recipes').select('*')
       .order('last_made',{ascending:false,nullsFirst:false});
     if(error)throw error;
-    RECIPES=data||[]; if(_tab==='todo')renderRecipes();
+    RECIPES=data||[]; renderRecipes();
   }catch(_){}
 }
 function renderRecipes(){
@@ -7264,11 +7264,11 @@ function renderActive(){
   else if(_tab==='review'){renderReview();if(!siteUpdLoaded)pullSiteUpdates();}
   else if(_tab==='sleep'){renderSleepTab();if(!healthLoaded)pullHealth();
     if(!weeklyLoaded)pullWeekly();if(!habitsLoaded)pullHabits();}
-  else if(_tab==='diet'){renderDietTab();if(!healthLoaded)pullHealth();
+  else if(_tab==='diet'){renderDietTab();renderRecipes();if(!healthLoaded)pullHealth();
     if(!weeklyLoaded)pullWeekly();if(!habitsLoaded)pullHabits();}
   else if(_tab==='sport'){renderSportTab();if(!healthLoaded)pullHealth();
     if(!weeklyLoaded)pullWeekly();if(!habitsLoaded)pullHabits();}
-  else if(_tab==='todo'){renderTodos();renderMemos();renderRecipes();renderHandbook();renderRecur();
+  else if(_tab==='todo'){renderTodos();renderMemos();renderHandbook();renderRecur();
     if(!todoLoaded)pullTodos();if(!memoLoaded)pullMemos();if(!hbLoaded)pullHandbook();
     if(!rcLoaded)pullRecur();}
   else if(_tab==='spend'){renderSpend();if(!spendLoaded)pullSpend();}
