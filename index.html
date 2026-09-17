@@ -603,6 +603,11 @@
   .cyc-bar{flex:1;height:9px;border-radius:5px;background:var(--line);position:relative;min-width:0}
   .cyc-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:#e0678c;display:block}
   .cyc-n{flex:0 0 40px;text-align:right;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .cyc-rec{display:flex;align-items:center;gap:7px;margin-top:10px;border-top:1px solid var(--line);padding-top:9px;flex-wrap:wrap}
+  .cyc-date{font:inherit;font-size:12px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 7px;min-width:0;flex:0 1 138px}
+  .cyc-btn{font:inherit;font-size:12.5px;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+  .cyc-btn.on{background:#f9d3de;border-color:#f2b9cb;color:#9d2b4e;font-weight:700}
+  .cyc-btn:active{transform:translateY(1px)}
   .reco-row{display:flex;gap:8px;align-items:flex-start;padding:7px 0;
     border-bottom:1px solid var(--line)}
   .reco-row.arch{opacity:.6}
@@ -1686,7 +1691,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-14g';
+const BUILD='2026-09-17a';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1933,6 +1938,9 @@ const I18N={
   'cyc.next':'Next expected','cyc.inDays':'in {n} days','cyc.due':'due now',
   'cyc.range':'range {a}–{b}','cyc.ovu':'Ovulation est.','cyc.est':'(from cycle length, not measured)',
   'cyc.typ':'last {n}: cycle {c}d · period {p}d',
+  'cyc.start':'Started','cyc.end':'Ended','cyc.saved':'Recorded',
+  'cyc.dup':'Already recorded a start on that date',
+  'cyc.noOpen':'No cycle started on or before that date',
   'stat.from':'From','stat.to':'To',
   'stat.total':'Total tracked','stat.days':'Days','stat.top':'Top category',
   'stat.stacked':'Hours by category by day','stat.share':'Time share by category',
@@ -2110,6 +2118,9 @@ const I18N={
   'cyc.next':'预计下次','cyc.inDays':'还有 {n} 天','cyc.due':'就在这两天',
   'cyc.range':'区间 {a}–{b}','cyc.ovu':'排卵估计','cyc.est':'(按周期长度推算, 非实测)',
   'cyc.typ':'近 {n} 次: 周期 {c} 天 · 经期 {p} 天',
+  'cyc.start':'来了','cyc.end':'结束了','cyc.saved':'记上了',
+  'cyc.dup':'那天已经记过一次开始了',
+  'cyc.noOpen':'那天之前没有已记录的周期开始',
   'stat.from':'起','stat.to':'止',
   'stat.total':'总记录时长','stat.days':'天数','stat.top':'最多分类',
   'stat.stacked':'每日各分类时长','stat.share':'各分类时间占比',
@@ -5181,7 +5192,7 @@ function cycStats(){
 function renderCycle(){
   const host=document.getElementById('cycBox');
   if(!host)return;
-  if(!CYCLES.length){host.innerHTML=`<div class="rev-empty">${esc(t('nodata'))}</div>`;return}
+  if(!CYCLES.length){host.innerHTML=`<div class="rev-empty">${esc(t('nodata'))}</div>`+cycRecHTML();return}
   const st=cycStats();
   const last=CYCLES[0];
   const today=vTodayISO();
@@ -5213,7 +5224,44 @@ function renderCycle(){
         <span class="cyc-n">${c.cycle_length}<span class="faint">/${c.period_length??'—'}</span></span></div>`;
     }).join('')+`</div>`;
   }
-  host.innerHTML=html;
+  host.innerHTML=html+cycRecHTML();
+}
+// 她 9/17 要的：在运动栏直接记经期起止。日期框默认今天，所以补昨天前天也只多一步。
+function cycRecHTML(){
+  return `<div class="cyc-rec">
+    <input type="date" id="cycDate" class="cyc-date" value="${vTodayISO()}">
+    <button class="cyc-btn on" onclick="cycStart()">${esc(t('cyc.start'))}</button>
+    <button class="cyc-btn" onclick="cycEnd()">${esc(t('cyc.end'))}</button>
+  </div>`;
+}
+function cycPick(){const el=document.getElementById('cycDate');return (el&&el.value)||vTodayISO()}
+// 记「来了」＝上一轮就此收口（end_date 取前一天、cycle_length 取两次开始的间隔），再开新的一轮。
+async function cycStart(){
+  if(!cloud||!authed)return;
+  const d=cycPick(), prev=CYCLES[0];
+  if(prev&&prev.start_date===d){toast(t('cyc.dup'),'err');return}
+  try{
+    if(prev&&prev.start_date<d){
+      const {error:e1}=await sb.from('cycles')
+        .update({end_date:shiftISO(d,-1),cycle_length:dayDiff(d,prev.start_date)}).eq('id',prev.id);
+      if(e1)throw e1;
+    }
+    const {error}=await sb.from('cycles').insert({start_date:d,src:'site'});
+    if(error)throw error;
+    await pullCycles(); toast(t('cyc.saved'),'ok');
+  }catch(e){toast(t('msg.cloudErr'),'err')}
+}
+// 记「结束了」＝只填这一轮的 period_length，不动 cycle_length。
+async function cycEnd(){
+  if(!cloud||!authed)return;
+  const d=cycPick(), c=CYCLES[0];
+  if(!c||c.start_date>d){toast(t('cyc.noOpen'),'err');return}
+  try{
+    const {error}=await sb.from('cycles')
+      .update({period_length:dayDiff(d,c.start_date)+1}).eq('id',c.id);
+    if(error)throw error;
+    await pullCycles(); toast(t('cyc.saved'),'ok');
+  }catch(e){toast(t('msg.cloudErr'),'err')}
 }
 let DIET=[],ENERGY=[],BODY=[],healthLoaded=false;
 function isoDaysBack(n){   // last n days ascending, ending today
