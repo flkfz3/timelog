@@ -603,6 +603,19 @@
   .cyc-bar{flex:1;height:9px;border-radius:5px;background:var(--line);position:relative;min-width:0}
   .cyc-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:#e0678c;display:block}
   .cyc-n{flex:0 0 40px;text-align:right;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .sop-head{display:flex;align-items:baseline;gap:9px;margin-bottom:8px;flex-wrap:wrap}
+  .sop-big{font-size:21px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+  .sop-upd{font-size:11.5px;color:var(--muted)}
+  .sop-upd.stale{color:#c2410c;font-weight:700}
+  .sop-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
+  .sop-n{flex:0 0 20px;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;padding-top:2px}
+  .sop-b{flex:1;min-width:0}
+  .sop-t{font-size:13px;color:var(--ink);font-weight:600}
+  .sop-t.done{color:var(--muted);font-weight:400}
+  .sop-d{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:2px}
+  .sop-s{flex:0 0 auto;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--line);color:var(--muted)}
+  .sop-s.doing{background:#d9ecff;color:#1d4e89;font-weight:700}
+  .sop-s.done{background:#d8f0dd;color:#256b3a}
   .cyc-rec{display:flex;align-items:center;gap:7px;margin-top:10px;border-top:1px solid var(--line);padding-top:9px;flex-wrap:wrap}
   .cyc-date{font:inherit;font-size:12px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 7px;min-width:0;flex:0 1 138px}
   .cyc-btn{font:inherit;font-size:12.5px;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
@@ -1385,6 +1398,7 @@
   </section>
 
   <section id="tab-review" class="hidden">
+    <div class="card hidden" id="sopCard"><div id="sopBox"></div></div>
     <div class="card">
       <div class="rev-head">
         <div>
@@ -1691,7 +1705,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-17a';
+const BUILD='2026-09-18a';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1938,6 +1952,7 @@ const I18N={
   'cyc.next':'Next expected','cyc.inDays':'in {n} days','cyc.due':'due now',
   'cyc.range':'range {a}–{b}','cyc.ovu':'Ovulation est.','cyc.est':'(from cycle length, not measured)',
   'cyc.typ':'last {n}: cycle {c}d · period {p}d',
+  'sop.title':'Butler SOP','sop.step':'step {a} of {b}','sop.upd':'updated {d}','sop.stale':'no update for {n} days','sop.todo':'todo','sop.doing':'in progress','sop.done':'done',
   'cyc.start':'Started','cyc.end':'Ended','cyc.saved':'Recorded',
   'cyc.dup':'Already recorded a start on that date',
   'cyc.noOpen':'No cycle started on or before that date',
@@ -2118,6 +2133,7 @@ const I18N={
   'cyc.next':'预计下次','cyc.inDays':'还有 {n} 天','cyc.due':'就在这两天',
   'cyc.range':'区间 {a}–{b}','cyc.ovu':'排卵估计','cyc.est':'(按周期长度推算, 非实测)',
   'cyc.typ':'近 {n} 次: 周期 {c} 天 · 经期 {p} 天',
+  'sop.title':'管家 SOP 进度','sop.step':'第 {a} 步 / 共 {b} 步','sop.upd':'最后更新 {d}','sop.stale':'已 {n} 天没动','sop.todo':'未开始','sop.doing':'进行中','sop.done':'完成',
   'cyc.start':'来了','cyc.end':'结束了','cyc.saved':'记上了',
   'cyc.dup':'那天已经记过一次开始了',
   'cyc.noOpen':'那天之前没有已记录的周期开始',
@@ -2374,7 +2390,7 @@ async function doSignUp(){
   else toast(t('msg.signUp'),'ok');
 }
 async function doSignOut(){if(sb){await sb.auth.signOut();
-  DB=[];DIET=[];ENERGY=[];BODY=[];CYCLES=[];PLAN=[];healthLoaded=false;cyclesLoaded=false;planLoaded=false;
+  DB=[];DIET=[];ENERGY=[];BODY=[];CYCLES=[];PLAN=[];SOP=[];healthLoaded=false;cyclesLoaded=false;planLoaded=false;sopLoaded=false;
   MEMOS=[];TODOS=[];RECOS=[];memoLoaded=false;todoLoaded=false;recoLoaded=false;
   PURCHASES=[];spendLoaded=false;WEEKLY=null;weeklyLoaded=false;
   HABITS={live:[],past:[]};habitsLoaded=false;
@@ -5166,6 +5182,33 @@ async function togglePlan(id,v){
     p.done=v; renderPlan();
   }catch(e){toast(t('msg.cloudErr'),'err')}
 }
+let SOP=[],sopLoaded=false;
+// 她 9/18 要的：SOP 进度要摆在她看得见的地方，日期不动就是我把它搁下了。
+async function pullSop(){
+  if(!cloud||!authed)return;
+  try{
+    const {data,error}=await sb.from('sop_progress').select('*').order('step_no');
+    if(!error&&data)SOP=data;
+    sopLoaded=true; renderSop();
+  }catch(_){sopLoaded=true}
+}
+function renderSop(){
+  const box=document.getElementById('sopBox'); if(!box)return;
+  const card=document.getElementById('sopCard');
+  if(!SOP.length){box.innerHTML='';if(card)card.classList.add('hidden');return}
+  const cur=SOP.find(r=>r.status==='doing')||SOP.filter(r=>r.status!=='done').pop()||SOP[SOP.length-1];
+  const newest=SOP.reduce((m,r)=>r.updated_at&&r.updated_at>m?r.updated_at:m,'');
+  const days=newest?Math.floor((Date.now()-new Date(newest).getTime())/86400000):null;
+  const stale=days!==null&&days>=14;
+  let h=`<div class="sop-head"><span class="sc-title" style="margin:0">${esc(t('sop.title'))}</span>
+    <span class="sop-big">${esc(t('sop.step',{a:cur.step_no,b:cur.total}))}</span>
+    <span class="sop-upd${stale?' stale':''}">${stale?esc(t('sop.stale',{n:days})):esc(t('sop.upd',{d:md(newest)}))}</span></div>`;
+  h+=SOP.map(r=>`<div class="sop-row"><span class="sop-n">${r.step_no}</span>
+    <span class="sop-b"><div class="sop-t${r.status==='done'?' done':''}">${esc(r.title)}</div>
+      <div class="sop-d">${esc(r.detail||'')}</div></span>
+    <span class="sop-s ${esc(r.status)}">${esc(t('sop.'+r.status))}</span></div>`).join('');
+  box.innerHTML=h; if(card)card.classList.remove('hidden');
+}
 let CYCLES=[],cyclesLoaded=false;
 // Menstrual cycle: 13 cycles imported from Apple Health 2026-08-16. The point
 // is not the calendar — it is that her fatigue questions ("slept 7.9h and
@@ -6378,7 +6421,7 @@ async function pullSiteUpdates(){
       .order('d',{ascending:false}).order('created_at',{ascending:true});
     if(!error&&data)SITEUPD=data;
     siteUpdLoaded=true;
-    if(_tab==='review')renderChangelog();
+    if(_tab==='review'){renderChangelog();if(!sopLoaded)pullSop();else renderSop();}
   }catch(_){siteUpdLoaded=true;}
 }
 // the 3am pivot applies to "shipped today" too: a 00:40 deploy note still
