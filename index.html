@@ -638,6 +638,11 @@
   .sop-t{font-size:13px;color:var(--ink);font-weight:600}
   .sop-t.done{color:var(--muted);font-weight:400}
   .sop-d{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:2px}
+  .sop-g{font-size:11px;color:var(--faint);line-height:1.6;margin-top:3px;
+    padding-left:7px;border-left:2px solid var(--line)}
+  .sop-due{font-size:10.5px;font-weight:600;color:var(--muted);margin-left:7px;
+    font-variant-numeric:tabular-nums}
+  .sop-due.late{color:#c2410c}
   .sop-s{flex:0 0 auto;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--line);color:var(--muted)}
   .sop-s.doing{background:#d9ecff;color:#1d4e89;font-weight:700}
   .sop-s.done{background:#d8f0dd;color:#256b3a}
@@ -1745,7 +1750,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-18e';
+const BUILD='2026-09-18f';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1999,6 +2004,7 @@ const I18N={
   'jn.inbox':'Waiting to be filed','jn.inboxHint':'Captured but not yet a playbook entry. Past 14 days it must be kept or dropped.',
   'jn.empty':'nothing waiting','jn.updated':'snapshot {d}','jn.none':'no snapshot yet',
   'sop.title':'Butler playbook','sop.step':'step {a} of {b}','sop.upd':'updated {d}','sop.stale':'no update for {n} days','sop.todo':'todo','sop.doing':'in progress','sop.done':'done',
+  'sop.due':'due {d}','sop.left':'{n}d left','sop.over':'{n}d over',
   'cyc.start':'Started','cyc.end':'Ended','cyc.saved':'Recorded',
   'cyc.dup':'Already recorded a start on that date',
   'cyc.noOpen':'No cycle started on or before that date',
@@ -2186,6 +2192,7 @@ const I18N={
   'jn.inbox':'待固化','jn.inboxHint':'贴下来了但还没成锦囊。挂过 14 天就必须判留还是退。',
   'jn.empty':'清空了','jn.updated':'快照 {d}','jn.none':'还没有快照',
   'sop.title':'锦囊进度','sop.step':'第 {a} 步 / 共 {b} 步','sop.upd':'最后更新 {d}','sop.stale':'已 {n} 天没动','sop.todo':'未开始','sop.doing':'进行中','sop.done':'完成',
+  'sop.due':'到期 {d}','sop.left':'还有 {n} 天','sop.over':'逾期 {n} 天',
   'cyc.start':'来了','cyc.end':'结束了','cyc.saved':'记上了',
   'cyc.dup':'那天已经记过一次开始了',
   'cyc.noOpen':'那天之前没有已记录的周期开始',
@@ -5356,10 +5363,20 @@ function renderSop(){
   let h=`<div class="sop-head"><span class="sc-title" style="margin:0">${esc(t('sop.title'))}</span>
     <span class="sop-big">${esc(t('sop.step',{a:cur.step_no,b:cur.total}))}</span>
     <span class="sop-upd${stale?' stale':''}">${stale?esc(t('sop.stale',{n:days})):esc(t('sop.upd',{d:md(newest)}))}</span></div>`;
-  h+=SOP.map(r=>`<div class="sop-row"><span class="sop-n">${r.step_no}</span>
-    <span class="sop-b"><div class="sop-t${r.status==='done'?' done':''}">${esc(r.title)}</div>
-      <div class="sop-d">${esc(r.detail||'')}</div></span>
-    <span class="sop-s ${esc(r.status)}">${esc(t('sop.'+r.status))}</span></div>`).join('');
+  const _td=vTodayISO();
+  h+=SOP.map(r=>{
+    let due='';
+    if(r.due){
+      const n=Math.round((new Date(r.due+'T12:00:00')-new Date(_td+'T12:00:00'))/86400000);
+      const late=n<0&&r.status!=='done';
+      due=`<span class="sop-due${late?' late':''}">${esc(t('sop.due',{d:md(r.due)}))}`
+        +(r.status==='done'?'':` · ${n<0?esc(t('sop.over',{n:-n})):esc(t('sop.left',{n:n}))}`)+`</span>`;
+    }
+    return `<div class="sop-row"><span class="sop-n">${r.step_no}</span>
+    <span class="sop-b"><div class="sop-t${r.status==='done'?' done':''}">${esc(r.title)}${due}</div>
+      <div class="sop-d">${esc(r.detail||'')}</div>
+      ${r.gate?`<div class="sop-g">${esc(r.gate)}</div>`:''}</span>
+    <span class="sop-s ${esc(r.status)}">${esc(t('sop.'+r.status))}</span></div>`;}).join('');
   box.innerHTML=h; if(card)card.classList.remove('hidden');
 }
 let CYCLES=[],cyclesLoaded=false;
