@@ -603,6 +603,13 @@
   .cyc-bar{flex:1;height:9px;border-radius:5px;background:var(--line);position:relative;min-width:0}
   .cyc-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:#e0678c;display:block}
   .cyc-n{flex:0 0 40px;text-align:right;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .tabs.reorder .tab{cursor:grab;position:relative}
+  .tabs.reorder .tab::after{content:'⠿';position:absolute;top:-2px;right:1px;font-size:9px;color:var(--faint)}
+  .tab.dragging{opacity:.45;cursor:grabbing}
+  .tab.dropmark{box-shadow:inset 3px 0 0 var(--accent)}
+  .tabs-edit{font:inherit;font-size:11.5px;padding:2px 9px;margin-left:6px;border-radius:999px;
+    border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer;vertical-align:middle}
+  .tabs-edit.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
   .sop-head{display:flex;align-items:baseline;gap:9px;margin-bottom:8px;flex-wrap:wrap}
   .sop-big{font-size:21px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
   .sop-upd{font-size:11.5px;color:var(--muted)}
@@ -1347,6 +1354,7 @@
       <span id="reviewBadge" class="rev-badge hidden">0</span></button>
     <button class="tab" data-tab="ach" data-i18n="tab.ach" onclick="switchTab('ach')"></button>
     <button class="tab" data-tab="dec" data-i18n="tab.dec" onclick="switchTab('dec')"></button>
+    <button class="tabs-edit" id="tabsEdit" onclick="toggleReorder()"></button>
   </div>
   <div class="tabs-line"></div>
 
@@ -1705,7 +1713,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-18a';
+const BUILD='2026-09-18b';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1952,6 +1960,7 @@ const I18N={
   'cyc.next':'Next expected','cyc.inDays':'in {n} days','cyc.due':'due now',
   'cyc.range':'range {a}–{b}','cyc.ovu':'Ovulation est.','cyc.est':'(from cycle length, not measured)',
   'cyc.typ':'last {n}: cycle {c}d · period {p}d',
+  'tabs.edit':'reorder','tabs.done':'done','tabs.saved':'order saved',
   'sop.title':'Butler SOP','sop.step':'step {a} of {b}','sop.upd':'updated {d}','sop.stale':'no update for {n} days','sop.todo':'todo','sop.doing':'in progress','sop.done':'done',
   'cyc.start':'Started','cyc.end':'Ended','cyc.saved':'Recorded',
   'cyc.dup':'Already recorded a start on that date',
@@ -2133,6 +2142,7 @@ const I18N={
   'cyc.next':'预计下次','cyc.inDays':'还有 {n} 天','cyc.due':'就在这两天',
   'cyc.range':'区间 {a}–{b}','cyc.ovu':'排卵估计','cyc.est':'(按周期长度推算, 非实测)',
   'cyc.typ':'近 {n} 次: 周期 {c} 天 · 经期 {p} 天',
+  'tabs.edit':'排序','tabs.done':'完成','tabs.saved':'顺序记住了',
   'sop.title':'管家 SOP 进度','sop.step':'第 {a} 步 / 共 {b} 步','sop.upd':'最后更新 {d}','sop.stale':'已 {n} 天没动','sop.todo':'未开始','sop.doing':'进行中','sop.done':'完成',
   'cyc.start':'来了','cyc.end':'结束了','cyc.saved':'记上了',
   'cyc.dup':'那天已经记过一次开始了',
@@ -2159,6 +2169,8 @@ function applyLang(){
     sel.value=cur||'work';}
   // kaileme-mode preview text depends on i18n
   if(document.getElementById('kmPreview'))syncKmPreview();
+  const _te=document.getElementById('tabsEdit');
+  if(_te)_te.textContent=t(_reorder?'tabs.done':'tabs.edit');
   renderActions();   // 今日建议 title + archive label live outside data-i18n
   renderHeroComments();   // 留言 placeholder + 发送 live outside data-i18n too
   renderActive();
@@ -2327,7 +2339,8 @@ async function refreshAll(){
   await Promise.allSettled([pullCloud(),pullInsight(),pullActions(),pullHealth(),
     pullMemos(),pullTodos(),pullSpend(),pullWeekly(),pullHabits(),pullAch(),
     pullHandbook(),pullRecur(),
-    pullSecInsights(),pullSiteUpdates(),pullAnchors(),pullComments(vTodayISO())]);
+    pullSecInsights(),pullSiteUpdates(),pullAnchors(),pullComments(vTodayISO()),
+    pullTabOrder()]);
   renderActive();
   return _pullFails===0;
 }
@@ -5182,6 +5195,71 @@ async function togglePlan(id,v){
     p.done=v; renderPlan();
   }catch(e){toast(t('msg.cloudErr'),'err')}
 }
+// 她 9/18 要的：标签顺序自己拖。用 pointer 事件, 鼠标和手指都走同一套。
+// 顺序存 ui_prefs 表而不是 localStorage, 这样电脑上拖完手机上也是那个顺序。
+let TABORDER=null, _reorder=false, _drag=null;
+const TABBAR=()=>document.querySelector('.tabs');
+function applyTabOrder(order){
+  const bar=TABBAR(); if(!bar||!order||!order.length)return;
+  const btns={}; bar.querySelectorAll('.tab[data-tab]').forEach(b=>btns[b.dataset.tab]=b);
+  const edit=document.getElementById('tabsEdit');
+  order.forEach(k=>{ if(btns[k]) bar.insertBefore(btns[k], edit); delete btns[k]; });
+  Object.values(btns).forEach(b=>bar.insertBefore(b, edit));   // 新增的标签排在末尾
+  if(edit)bar.appendChild(edit);
+}
+function currentOrder(){
+  return [...TABBAR().querySelectorAll('.tab[data-tab]')].map(b=>b.dataset.tab);
+}
+async function pullTabOrder(){
+  if(!cloud||!authed)return;
+  try{
+    const {data,error}=await sb.from('ui_prefs').select('v').eq('k','tab_order').maybeSingle();
+    if(!error&&data&&Array.isArray(data.v)){TABORDER=data.v;applyTabOrder(TABORDER);}
+  }catch(_){}
+}
+async function saveTabOrder(){
+  const o=currentOrder(); TABORDER=o;
+  try{localStorage.setItem('timelog.taborder',JSON.stringify(o));}catch(_){}
+  if(!cloud||!authed)return;
+  try{
+    const {error}=await sb.from('ui_prefs').upsert({k:'tab_order',v:o,updated_at:new Date().toISOString()},
+      {onConflict:'owner,k'});
+    if(!error)toast(t('tabs.saved'),'ok');
+  }catch(_){}
+}
+function toggleReorder(){
+  _reorder=!_reorder;
+  TABBAR().classList.toggle('reorder',_reorder);
+  const b=document.getElementById('tabsEdit');
+  b.classList.toggle('on',_reorder);
+  b.textContent=t(_reorder?'tabs.done':'tabs.edit');
+  if(!_reorder)saveTabOrder();
+}
+function initTabDrag(){
+  const bar=TABBAR(); if(!bar)return;
+  bar.addEventListener('pointerdown',e=>{
+    if(!_reorder)return;
+    const el=e.target.closest('.tab[data-tab]'); if(!el)return;
+    e.preventDefault(); _drag=el; el.classList.add('dragging');
+    el.setPointerCapture&&el.setPointerCapture(e.pointerId);
+  });
+  bar.addEventListener('pointermove',e=>{
+    if(!_reorder||!_drag)return;
+    const over=document.elementFromPoint(e.clientX,e.clientY);
+    const tgt=over&&over.closest&&over.closest('.tab[data-tab]');
+    bar.querySelectorAll('.dropmark').forEach(x=>x.classList.remove('dropmark'));
+    if(!tgt||tgt===_drag)return;
+    tgt.classList.add('dropmark');
+    const r=tgt.getBoundingClientRect();
+    bar.insertBefore(_drag, e.clientX < r.left+r.width/2 ? tgt : tgt.nextSibling);
+  });
+  const end=()=>{ if(!_drag)return;
+    _drag.classList.remove('dragging');
+    TABBAR().querySelectorAll('.dropmark').forEach(x=>x.classList.remove('dropmark'));
+    _drag=null; };
+  bar.addEventListener('pointerup',end);
+  bar.addEventListener('pointercancel',end);
+}
 let SOP=[],sopLoaded=false;
 // 她 9/18 要的：SOP 进度要摆在她看得见的地方，日期不动就是我把它搁下了。
 async function pullSop(){
@@ -7390,6 +7468,9 @@ function renderActive(){
     _rzT=setTimeout(()=>{tlSyncMetrics();renderActive();},180);});
   applyTheme();
   setInterval(applyTheme,5*60000);   // auto day/night re-check
+  try{const o=JSON.parse(localStorage.getItem('timelog.taborder')||'null');
+      if(Array.isArray(o))applyTabOrder(o);}catch(_){}   // 先用本地的, 云端拉到再覆盖
+  initTabDrag();
   applyLang();
   switchTab('today');
   initCloud();refreshAuthGate();
