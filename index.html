@@ -610,6 +610,24 @@
   .tabs-edit{font:inherit;font-size:11.5px;padding:2px 9px;margin-left:6px;border-radius:999px;
     border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer;vertical-align:middle}
   .tabs-edit.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .jn-hint{font-size:11.5px;color:var(--muted);margin:-2px 0 9px}
+  .jn-g{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+  .jn-g .n{flex:0 0 74px;text-align:right}
+  .jn-g .num{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .jn-g .num.warn{color:#c2410c}
+  .jn-g .unit{font-size:10.5px;color:var(--faint);display:block;line-height:1.3}
+  .jn-g .b{flex:1;min-width:0}
+  .jn-g .nm{font-size:13px;font-weight:650;color:var(--ink)}
+  .jn-g .bl{font-size:11px;color:var(--faint);margin-left:6px;font-weight:400}
+  .jn-g .nt{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.6}
+  .jn-l{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:12.5px}
+  .jn-l .ln{flex:0 0 52px;color:var(--ink);font-weight:650}
+  .jn-l .lv{flex:0 0 46px;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .jn-l .lh{flex:1;color:var(--muted);font-size:11.5px}
+  .jn-i{padding:6px 0;border-top:1px solid var(--line);font-size:12.5px;line-height:1.65;color:var(--ink)}
+  .jn-i .d{font-size:11px;color:var(--faint);margin-right:6px;font-variant-numeric:tabular-nums}
+  .jn-i .aged{color:#c2410c;font-weight:700}
+  .jn-upd{font-size:11px;color:var(--faint);text-align:center;padding:4px 0 10px}
   .sop-head{display:flex;align-items:baseline;gap:9px;margin-bottom:8px;flex-wrap:wrap}
   .sop-big{font-size:21px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
   .sop-upd{font-size:11.5px;color:var(--muted)}
@@ -1354,6 +1372,7 @@
       <span id="reviewBadge" class="rev-badge hidden">0</span></button>
     <button class="tab" data-tab="ach" data-i18n="tab.ach" onclick="switchTab('ach')"></button>
     <button class="tab" data-tab="dec" data-i18n="tab.dec" onclick="switchTab('dec')"></button>
+    <button class="tab" data-tab="jn" data-i18n="tab.jn" onclick="switchTab('jn')"></button>
     <button class="tabs-edit" id="tabsEdit" onclick="toggleReorder()"></button>
   </div>
   <div class="tabs-line"></div>
@@ -1405,8 +1424,21 @@
     <div class="stat-grid" id="statGrid"></div>
   </section>
 
-  <section id="tab-review" class="hidden">
+  <section id="tab-jn" class="hidden">
     <div class="card hidden" id="sopCard"><div id="sopBox"></div></div>
+    <div class="card"><div class="sc-title" data-i18n="jn.gates"></div>
+      <div class="jn-hint" data-i18n="jn.gatesHint"></div>
+      <div id="jnGates"></div></div>
+    <div class="card"><div class="sc-title" data-i18n="jn.layers"></div>
+      <div class="jn-hint" data-i18n="jn.layersHint"></div>
+      <div id="jnLayers"></div></div>
+    <div class="card"><div class="sc-title" data-i18n="jn.inbox"></div>
+      <div class="jn-hint" data-i18n="jn.inboxHint"></div>
+      <div id="jnInbox"></div></div>
+    <div class="jn-upd" id="jnUpd"></div>
+  </section>
+
+  <section id="tab-review" class="hidden">
     <div class="card">
       <div class="rev-head">
         <div>
@@ -1713,7 +1745,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-18c';
+const BUILD='2026-09-18e';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1961,6 +1993,11 @@ const I18N={
   'cyc.range':'range {a}–{b}','cyc.ovu':'Ovulation est.','cyc.est':'(from cycle length, not measured)',
   'cyc.typ':'last {n}: cycle {c}d · period {p}d',
   'tabs.edit':'reorder','tabs.done':'done','tabs.saved':'order saved',
+  'tab.jn':'Playbook',
+  'jn.gates':'Three gates','jn.gatesHint':'Each gate blocks a different way a knowledge base dies.',
+  'jn.layers':'Three layers','jn.layersHint':'How much is always loaded, how much is fetched on demand.',
+  'jn.inbox':'Waiting to be filed','jn.inboxHint':'Captured but not yet a playbook entry. Past 14 days it must be kept or dropped.',
+  'jn.empty':'nothing waiting','jn.updated':'snapshot {d}','jn.none':'no snapshot yet',
   'sop.title':'Butler playbook','sop.step':'step {a} of {b}','sop.upd':'updated {d}','sop.stale':'no update for {n} days','sop.todo':'todo','sop.doing':'in progress','sop.done':'done',
   'cyc.start':'Started','cyc.end':'Ended','cyc.saved':'Recorded',
   'cyc.dup':'Already recorded a start on that date',
@@ -2143,6 +2180,11 @@ const I18N={
   'cyc.range':'区间 {a}–{b}','cyc.ovu':'排卵估计','cyc.est':'(按周期长度推算, 非实测)',
   'cyc.typ':'近 {n} 次: 周期 {c} 天 · 经期 {p} 天',
   'tabs.edit':'排序','tabs.done':'完成','tabs.saved':'顺序记住了',
+  'tab.jn':'锦囊',
+  'jn.gates':'三道闸','jn.gatesHint':'知识库的三种死法，一道闸拦一种。',
+  'jn.layers':'三层','jn.layersHint':'哪些常驻在上下文里，哪些按需才拉。',
+  'jn.inbox':'待固化','jn.inboxHint':'贴下来了但还没成锦囊。挂过 14 天就必须判留还是退。',
+  'jn.empty':'清空了','jn.updated':'快照 {d}','jn.none':'还没有快照',
   'sop.title':'锦囊进度','sop.step':'第 {a} 步 / 共 {b} 步','sop.upd':'最后更新 {d}','sop.stale':'已 {n} 天没动','sop.todo':'未开始','sop.doing':'进行中','sop.done':'完成',
   'cyc.start':'来了','cyc.end':'结束了','cyc.saved':'记上了',
   'cyc.dup':'那天已经记过一次开始了',
@@ -2340,7 +2382,7 @@ async function refreshAll(){
     pullMemos(),pullTodos(),pullSpend(),pullWeekly(),pullHabits(),pullAch(),
     pullHandbook(),pullRecur(),
     pullSecInsights(),pullSiteUpdates(),pullAnchors(),pullComments(vTodayISO()),
-    pullTabOrder()]);
+    pullTabOrder(),pullJn()]);
   renderActive();
   return _pullFails===0;
 }
@@ -2407,6 +2449,7 @@ async function doSignOut(){if(sb){await sb.auth.signOut();
   MEMOS=[];TODOS=[];RECOS=[];memoLoaded=false;todoLoaded=false;recoLoaded=false;
   PURCHASES=[];spendLoaded=false;WEEKLY=null;weeklyLoaded=false;
   HABITS={live:[],past:[]};habitsLoaded=false;
+  JN=null;jnLoaded=false;
   SECINS={};secInsLoaded=false;SITEUPD=[];siteUpdLoaded=false;
   ACTIONS=[];actionsLoaded=false;
   ACH=[];achLoaded=false;
@@ -5260,6 +5303,38 @@ function initTabDrag(){
   bar.addEventListener('pointerup',end);
   bar.addEventListener('pointercancel',end);
 }
+let JN=null,jnLoaded=false;
+async function pullJn(){
+  if(!cloud||!authed)return;
+  try{
+    const {data,error}=await sb.from('jinnang').select('v,updated_at').eq('k','state').maybeSingle();
+    if(!error&&data)JN=data;
+  }catch(_){}
+  jnLoaded=true; renderJn();
+}
+function renderJn(){
+  const g=document.getElementById('jnGates'); if(!g)return;
+  const u=document.getElementById('jnUpd');
+  if(!JN){g.innerHTML='';if(u)u.textContent=t('jn.none');return}
+  const v=JN.v||{};
+  g.innerHTML=(v.gates||[]).map(x=>`<div class="jn-g">
+    <span class="n"><span class="num${x.warn?' warn':''}">${x.num}</span>
+      <span class="unit">${esc(x.unit||'')}</span></span>
+    <span class="b"><div class="nm">${esc(x.name)}<span class="bl">拦 ${esc(x.blocks)}</span></div>
+      <div class="nt">${esc(x.note||'')}</div></span></div>`).join('');
+  const L=document.getElementById('jnLayers');
+  L.innerHTML=(v.layers||[]).map(x=>`<div class="jn-l"><span class="ln">${esc(x.name)}</span>
+    <span class="lv">${x.n}</span><span class="lh">${esc(x.how)}</span></div>`).join('')
+    + (v.tok_mean_7d!=null?`<div class="jn-l"><span class="ln">注入</span>
+    <span class="lv">${v.tok_mean_7d}</span><span class="lh">单次平均 token，七天`
+    + (v.tok_mean_prev!=null?`，上一周 ${v.tok_mean_prev}`:'')+`</span></div>`:'');
+  const I=document.getElementById('jnInbox');
+  I.innerHTML=(v.inbox&&v.inbox.length)
+    ? v.inbox.map(x=>`<div class="jn-i"><span class="d${x.days>=14?' aged':''}">${esc(x.date)}`
+      +(x.days>=14?` 挂了 ${x.days} 天`:'')+`</span>${esc(x.text)}</div>`).join('')
+    : `<div class="jn-i" style="color:var(--muted)">${esc(t('jn.empty'))}</div>`;
+  if(u)u.textContent=t('jn.updated',{d:md(JN.updated_at)});
+}
 let SOP=[],sopLoaded=false;
 // 她 9/18 要的：SOP 进度要摆在她看得见的地方，日期不动就是我把它搁下了。
 async function pullSop(){
@@ -6499,7 +6574,7 @@ async function pullSiteUpdates(){
       .order('d',{ascending:false}).order('created_at',{ascending:true});
     if(!error&&data)SITEUPD=data;
     siteUpdLoaded=true;
-    if(_tab==='review'){renderChangelog();if(!sopLoaded)pullSop();else renderSop();}
+    if(_tab==='review')renderChangelog();
   }catch(_){siteUpdLoaded=true;}
 }
 // the 3am pivot applies to "shipped today" too: a 00:40 deploy note still
@@ -7415,7 +7490,7 @@ function switchTab(tp){
     // view — otherwise several tabs show no active indicator at all
     if(on&&b.scrollIntoView)try{b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});}catch(_){}
   });
-  ['today','week','month','stat','todo','spend','sleep','diet','sport','add','review','ach','dec'].forEach(s=>
+  ['today','week','month','stat','todo','spend','sleep','diet','sport','add','review','ach','dec','jn'].forEach(s=>
     document.getElementById('tab-'+s).classList.toggle('hidden',s!==tp));
   renderActive();
 }
@@ -7435,6 +7510,8 @@ function renderActive(){
   else if(_tab==='month')renderMonth();
   else if(_tab==='stat')renderStat();
   else if(_tab==='review'){renderReview();if(!siteUpdLoaded)pullSiteUpdates();}
+  else if(_tab==='jn'){if(!sopLoaded)pullSop();else renderSop();
+    if(!jnLoaded)pullJn();else renderJn();}
   else if(_tab==='sleep'){renderSleepTab();if(!healthLoaded)pullHealth();
     if(!weeklyLoaded)pullWeekly();if(!habitsLoaded)pullHabits();}
   else if(_tab==='diet'){renderDietTab();renderRecipes();if(!healthLoaded)pullHealth();
