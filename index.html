@@ -588,6 +588,15 @@
     text-align:right;white-space:nowrap}
   .pi-foot{margin-top:10px;font-size:11px;color:var(--faint);
     font-variant-numeric:tabular-nums}
+  .sub-in{color:var(--faint);font-size:11px;margin-left:6px}
+  .sub-r{padding:9px 0;border-top:1px solid var(--line)}
+  .sub-h{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+  .sub-amt{font-variant-numeric:tabular-nums;font-weight:600}
+  .sub-m{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .sub-svg{width:100%;height:110px;margin-top:12px;overflow:visible}
+  .sub-lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
+  .sub-lg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+  .sub-note{font-size:11px;color:var(--faint);margin-top:6px}
   .plan-sum{font-size:11.5px;color:var(--muted);font-weight:500;float:right;
     font-variant-numeric:tabular-nums}
   .plan-row{border-bottom:1px solid var(--line)}
@@ -1506,6 +1515,9 @@
   </section>
 
   <section id="tab-spend" class="hidden">
+    <div class="card"><div class="sc-title" data-i18n="sub.title"></div>
+      <div class="jn-hint" data-i18n="sub.hint"></div>
+      <div id="subAcct"></div><div id="subList"></div><div id="subChart"></div></div>
     <div class="card si-card hidden"><div id="siBoxSpend"></div></div>
     <div class="card"><div class="sc-title" data-i18n="sp.month"></div>
       <div id="spMonthBox"></div></div>
@@ -1773,7 +1785,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20f';
+const BUILD='2026-09-20g';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -2022,6 +2034,7 @@ const I18N={
   'cyc.typ':'last {n}: cycle {c}d · period {p}d',
   'tabs.edit':'reorder','tabs.done':'done','tabs.saved':'order saved',
   'tab.jn':'Playbook',
+  'sub.title':'Subscriptions & Auto Pay','sub.hint':'what leaves each account every month',
   'tab.pi':'\ud83c\udf53 Pi', 'pi.title':'\ud83c\udf53', 'pi.none':'no status received yet',
   'pi.stale':'stale', 'pi.ago':'ago',
   'jn.gates':'Three gates','jn.gatesHint':'Each gate blocks a different way a knowledge base dies.',
@@ -2212,6 +2225,7 @@ const I18N={
   'cyc.typ':'近 {n} 次: 周期 {c} 天 · 经期 {p} 天',
   'tabs.edit':'排序','tabs.done':'完成','tabs.saved':'顺序记住了',
   'tab.jn':'锦囊',
+  'sub.title':'订阅与自动扣款','sub.hint':'每月从哪个账户流出多少，下一笔什么时候扣',
   'tab.pi':'\ud83c\udf53 树莓派', 'pi.title':'\ud83c\udf53', 'pi.none':'还没收到过树莓派的状态',
   'pi.stale':'已经不新鲜了', 'pi.ago':'前更新',
   'jn.gates':'三道闸','jn.gatesHint':'知识库的三种死法，一道闸拦一种。',
@@ -2416,7 +2430,7 @@ async function refreshAll(){
     pullMemos(),pullTodos(),pullSpend(),pullWeekly(),pullHabits(),pullAch(),
     pullHandbook(),pullRecur(),
     pullSecInsights(),pullSiteUpdates(),pullAnchors(),pullComments(vTodayISO()),
-    pullTabOrder(),pullJn(),pullPi()]);
+    pullTabOrder(),pullJn(),pullPi(),pullSubs()]);
   renderActive();
   return _pullFails===0;
 }
@@ -2494,7 +2508,7 @@ async function doSignOut(){if(sb){await sb.auth.signOut();
   MEMOS=[];TODOS=[];RECOS=[];memoLoaded=false;todoLoaded=false;recoLoaded=false;
   PURCHASES=[];spendLoaded=false;WEEKLY=null;weeklyLoaded=false;
   HABITS={live:[],past:[]};habitsLoaded=false;
-  JN=null;jnLoaded=false;PI=null;piLoaded=false;
+  JN=null;jnLoaded=false;PI=null;piLoaded=false;SUBS=[];SUBPAY=[];ACCTS=[];subsLoaded=false;
   SECINS={};secInsLoaded=false;SITEUPD=[];siteUpdLoaded=false;
   ACTIONS=[];actionsLoaded=false;
   ACH=[];achLoaded=false;
@@ -5378,6 +5392,62 @@ function initTabDrag(){
   bar.addEventListener('pointerup',end);
   bar.addEventListener('pointercancel',end);
 }
+let SUBS=[],SUBPAY=[],ACCTS=[],subsLoaded=false;
+async function pullSubs(){
+  if(!cloud||!authed)return;
+  try{
+    const a=await sb.from('subscriptions').select('*').order('sort');
+    const b=await sb.from('subscription_payments').select('*').order('period');
+    const c=await sb.from('money_accounts').select('*').order('sort');
+    SUBS=a.data||[];SUBPAY=b.data||[];ACCTS=c.data||[];
+  }catch(_){}
+  subsLoaded=true;renderSubs();
+}
+function renderSubs(){
+  const box=document.getElementById('subList'); if(!box)return;
+  const act=SUBS.filter(x=>x.active!==false);
+  // 每个账户每月固定要出多少。她 9/20 把工资拆成 Chase 90 / BoA 10，
+  // 而电和网都从 BoA 扣，这一栏就是为了让那个矛盾自己显出来。
+  const out={};act.forEach(x=>{out[x.account]=(out[x.account]||0)+Number(x.amount||0)});
+  const A=document.getElementById('subAcct');
+  A.innerHTML=ACCTS.map(a=>{
+    const o=out[a.name]||0;
+    return `<div class="pi-r"><span>${esc(a.name)}<span class="sub-in">${esc(a.inflow_note||'')}</span></span>
+      <b>${o?'每月出 '+o.toFixed(2):'无固定扣款'}</b></div>`;}).join('');
+  const today=new Date();today.setHours(0,0,0,0);
+  box.innerHTML=act.slice().sort((x,y)=>String(x.next_draft||'9')<String(y.next_draft||'9')?-1:1)
+   .map(x=>{
+    const hist=SUBPAY.filter(p=>p.sub_id===x.id).map(p=>Number(p.amount));
+    const avg=hist.length?hist.reduce((s,v)=>s+v,0)/hist.length:null;
+    let days='';
+    if(x.next_draft){const d=Math.round((new Date(x.next_draft+'T00:00:00')-today)/86400000);
+      days=d<0?'已过':d===0?'今天':d+' 天后';}
+    return `<div class="sub-r"><div class="sub-h"><b>${esc(x.name)}</b>
+        <span class="sub-amt">${Number(x.amount||0).toFixed(2)}</span></div>
+      <div class="sub-m">${esc(x.account)} · ${esc(x.method||'')}
+        ${avg!=null&&hist.length>1?' · 近'+hist.length+'期均 '+avg.toFixed(2):''}</div>
+      <div class="sub-m">出账 ${esc(x.bill_note||'?')}</div>
+      <div class="sub-m">扣款 ${esc(x.draft_note||'?')}${
+        x.next_draft?' · <b>下次 '+x.next_draft.slice(5)+'（'+days+'）</b>':''}</div></div>`;}).join('')
+   || `<div class="sc-empty">还没有登记任何订阅</div>`;
+  // 逐项月度折线。数据少的时候画出来是断的, 那就让它断着, 不补点。
+  const C=document.getElementById('subChart');
+  const months=[...new Set(SUBPAY.map(p=>p.period.slice(0,7)))].sort();
+  if(months.length<2){C.innerHTML=`<div class="sub-note">攒够两个月才画曲线，现在只有 ${months.length} 个月的数</div>`;return}
+  const W=300,H=90,pad=4,all=SUBPAY.map(p=>Number(p.amount)),mx=Math.max(...all,1);
+  const cols=['#2563eb','#059669','#c2410c','#7c3aed','#be185d'];
+  C.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="sub-svg">`+act.map((x,i)=>{
+    const pts=months.map((m,j)=>{const r=SUBPAY.find(p=>p.sub_id===x.id&&p.period.slice(0,7)===m);
+      return r?[pad+j*(W-2*pad)/Math.max(months.length-1,1),H-pad-(Number(r.amount)/mx)*(H-2*pad)]:null;})
+      .filter(Boolean);
+    if(!pts.length)return '';
+    return `<polyline fill="none" stroke="${cols[i%5]}" stroke-width="2"
+      points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}"/>`
+      +pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.5" fill="${cols[i%5]}"/>`).join('');
+  }).join('')+`</svg><div class="sub-lg">`+act.map((x,i)=>
+    `<span><i style="background:${cols[i%5]}"></i>${esc(x.name)}</span>`).join('')
+   +`</div><div class="sub-note">${months[0]} 到 ${months[months.length-1]}</div>`;
+}
 let PI=null,piLoaded=false,_piTimer=null;
 async function pullPi(){
   if(!cloud||!authed)return;
@@ -7667,7 +7737,8 @@ function renderActive(){
   else if(_tab==='todo'){renderTodos();renderMemos();renderHandbook();renderRecur();
     if(!todoLoaded)pullTodos();if(!memoLoaded)pullMemos();if(!hbLoaded)pullHandbook();
     if(!rcLoaded)pullRecur();}
-  else if(_tab==='spend'){renderSpend();if(!spendLoaded)pullSpend();}
+  else if(_tab==='spend'){renderSpend();if(!spendLoaded)pullSpend();
+    if(!subsLoaded)pullSubs();else renderSubs();}
   else if(_tab==='ach'){renderAch();
     if(!achLoaded)pullAch();if(!actionsLoaded)pullActions();}
   else if(_tab==='dec'){renderDec();if(!decLoaded)pullDec();}
