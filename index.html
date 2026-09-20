@@ -1750,7 +1750,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-18f';
+const BUILD='2026-09-19a';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -2393,6 +2393,17 @@ async function refreshAll(){
   renderActive();
   return _pullFails===0;
 }
+
+// 页面只在登录那一下和点 ↻ 时拉过库。她在手机上把页面留着，
+// 我这边写了新块，她切回来看到的还是几小时前的快照，会以为我没记。
+// 所以标签页回到前台就重拉一次，30 秒内不重复拉，防止来回切窗口打接口。
+let _lastRefresh=Date.now();
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible'||!cloud||!authed)return;
+  if(Date.now()-_lastRefresh<30000)return;
+  _lastRefresh=Date.now();
+  refreshAll();
+});
 // Deployed-BUILD probe: fetch this very page with a cache-buster and read
 // its BUILD constant. Runs only on an explicit ↻ tap, never on a timer.
 // (The regex cannot false-match its own source below: after BUILD=' the
