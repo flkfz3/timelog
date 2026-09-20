@@ -1785,7 +1785,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20h';
+const BUILD='2026-09-20i';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5449,11 +5449,17 @@ function renderSubs(){
    +`</div><div class="sub-note">${months[0]} 到 ${months[months.length-1]}</div>`;
 }
 let PI=null,piLoaded=false,_piTimer=null;
+let DOORS={};
 async function pullPi(){
   if(!cloud||!authed)return;
   try{
     const {data,error}=await sb.from('pi_status').select('v,updated_at').maybeSingle();
     if(!error)PI=data||null;
+    // 树莓派推的 door_state 只带最近报的那一扇门，另一扇就没了。
+    // 账本里两扇都在，各取最新一条自己算，不用等它改字段。
+    const d=await sb.from('door_probe').select('at,state,where_')
+      .eq('testing',false).order('at',{ascending:false}).limit(40);
+    DOORS={};(d.data||[]).forEach(r=>{if(!DOORS[r.where_])DOORS[r.where_]=r});
   }catch(_){}
   piLoaded=true; renderPi();
 }
@@ -5489,15 +5495,21 @@ function renderPi(){
     .filter(([k])=>v[k]!=null)
     .map(([k,lab])=>`<span class="pi-pill${v[k]==='active'?' on':' off'}">
       <i></i>${esc(lab)}</span>`).join('');
-  let doorV=v.door_state==null?null
-    :(v.door_state==='open'?'开着':v.door_state==='close'?'关着':String(v.door_state))
-     +(v.door_where?' · '+v.door_where+'门':'');
-  const rows=[['门当前',doorV],
-              ['最后一次门事件',piFmt('door_at',v.door_at)],
+  // 门名本身就带「门」字，再拼一个就成了「正门门」。她 9/20 第二次纠这个。
+  const dname=w=>w.endsWith('门')?w:w+'门';
+  const dstate=r=>r.state==='open'?'开着':r.state==='close'?'关着':String(r.state);
+  const rows=Object.keys(DOORS).length
+    ? Object.keys(DOORS).sort().map(w=>[dname(w),
+        dstate(DOORS[w])+' · '+piFmt('door_at',DOORS[w].at)])
+    : [['门当前',v.door_state==null?null
+        :(v.door_state==='open'?'开着':v.door_state==='close'?'关着':String(v.door_state))
+         +(v.door_where?' · '+dname(v.door_where):'')],
+       ['最后一次门事件',piFmt('door_at',v.door_at)]];
+  rows.push(
               ['门磁电量',v.battery==null?null:v.battery+'%'],
               ['已运行',piFmt('uptime_s',v.uptime_s)],
               ['负载',v.load1==null?null:Number(v.load1).toFixed(2)],
-              ['温度',v.temp_c==null?null:Number(v.temp_c).toFixed(1)+'°C']];
+              ['温度',v.temp_c==null?null:Number(v.temp_c).toFixed(1)+'°C']);
   // 约定之外的字段原样接在后面, 不吞。悄悄丢掉就等于我替她决定了什么重要。
   const known=new Set(['door_service','agent_service','door_state','door_where',
                        'door_at','battery','uptime_s','load1','temp_c','host','ip_tailnet']);
