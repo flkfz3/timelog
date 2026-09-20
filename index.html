@@ -1750,7 +1750,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-19a';
+const BUILD='2026-09-20a';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -2483,9 +2483,22 @@ async function doSignOut(){if(sb){await sb.auth.signOut();
 async function pullCloud(){
   if(!cloud)return;
   try{
-    const {data,error}=await sb.from('meetings').select('*');
-    if(error)throw error;
-    DB=data||[];
+    // PostgREST 的 max_rows 是 1000，meetings 已经 1160 行。不分页的话
+    // 服务端悄悄截断，既不报错也不告诉你截了，回来的是任意 1000 行；被更新过
+    // 的行在堆里挪到尾部，正好落在截断线外面，表现就是「今天改过的块不见了」。
+    // 2026-09-20 她两次说记录没写上去，都是这个。按主键翻页取全。
+    const PAGE=1000;
+    let all=[],from=0;
+    for(;;){
+      const {data,error}=await sb.from('meetings').select('*')
+        .order('id',{ascending:true}).range(from,from+PAGE-1);
+      if(error)throw error;
+      all=all.concat(data||[]);
+      if(!data||data.length<PAGE)break;
+      from+=PAGE;
+      if(from>50000)break;              // 跑飞了的保险丝
+    }
+    DB=all;
     renderActive();
   }catch(e){console.warn('pullCloud',e);_pullFails++;toast(t('msg.cloudErr'),'err')}
   pullMnotes();
