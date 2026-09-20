@@ -573,6 +573,10 @@
 .tlg-fig-mini{width:6.9px;fill:#22a06b}
 .tlg-care.tlg-mini .tlg-x{color:#22a06b}
   .tlg-care .tlg-x{color:var(--care-ink,#0284c7)}
+  .tlg-anchor.tlg-door{font-size:8.5px;opacity:.45;max-width:118px}
+  .tlg-anchor.tlg-door .tlg-tri{color:var(--muted);font-size:7px;opacity:.7}
+  .pi-ok{color:#22a06b}.pi-bad{color:#c2410c}
+  .jn-hint.warn{color:#c2410c}
   .plan-sum{font-size:11.5px;color:var(--muted);font-weight:500;float:right;
     font-variant-numeric:tabular-nums}
   .plan-row{border-bottom:1px solid var(--line)}
@@ -1378,6 +1382,7 @@
     <button class="tab" data-tab="ach" data-i18n="tab.ach" onclick="switchTab('ach')"></button>
     <button class="tab" data-tab="dec" data-i18n="tab.dec" onclick="switchTab('dec')"></button>
     <button class="tab" data-tab="jn" data-i18n="tab.jn" onclick="switchTab('jn')"></button>
+    <button class="tab" data-tab="pi" data-i18n="tab.pi" onclick="switchTab('pi')"></button>
     <button class="tabs-edit" id="tabsEdit" onclick="toggleReorder()"></button>
   </div>
   <div class="tabs-line"></div>
@@ -1429,6 +1434,13 @@
     <div class="stat-grid" id="statGrid"></div>
   </section>
 
+  <section id="tab-pi" class="hidden">
+    <div class="card">
+      <div class="sc-title" data-i18n="pi.title"></div>
+      <div class="jn-hint" id="piFresh"></div>
+      <div id="piBox"></div>
+    </div>
+  </section>
   <section id="tab-jn" class="hidden">
     <div class="card hidden" id="sopCard"><div id="sopBox"></div></div>
     <div class="card"><div class="sc-title" data-i18n="jn.gates"></div>
@@ -1750,7 +1762,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20a';
+const BUILD='2026-09-20c';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1999,6 +2011,8 @@ const I18N={
   'cyc.typ':'last {n}: cycle {c}d · period {p}d',
   'tabs.edit':'reorder','tabs.done':'done','tabs.saved':'order saved',
   'tab.jn':'Playbook',
+  'tab.pi':'\ud83c\udf53 Pi', 'pi.title':'Raspberry Pi', 'pi.none':'no status received yet',
+  'pi.stale':'stale', 'pi.ago':'ago',
   'jn.gates':'Three gates','jn.gatesHint':'Each gate blocks a different way a knowledge base dies.',
   'jn.layers':'Three layers','jn.layersHint':'How much is always loaded, how much is fetched on demand.',
   'jn.inbox':'Waiting to be filed','jn.inboxHint':'Captured but not yet a playbook entry. Past 14 days it must be kept or dropped.',
@@ -2187,6 +2201,8 @@ const I18N={
   'cyc.typ':'近 {n} 次: 周期 {c} 天 · 经期 {p} 天',
   'tabs.edit':'排序','tabs.done':'完成','tabs.saved':'顺序记住了',
   'tab.jn':'锦囊',
+  'tab.pi':'\ud83c\udf53 树莓派', 'pi.title':'树莓派', 'pi.none':'还没收到过树莓派的状态',
+  'pi.stale':'已经不新鲜了', 'pi.ago':'前更新',
   'jn.gates':'三道闸','jn.gatesHint':'知识库的三种死法，一道闸拦一种。',
   'jn.layers':'三层','jn.layersHint':'哪些常驻在上下文里，哪些按需才拉。',
   'jn.inbox':'待固化','jn.inboxHint':'贴下来了但还没成锦囊。挂过 14 天就必须判留还是退。',
@@ -2389,7 +2405,7 @@ async function refreshAll(){
     pullMemos(),pullTodos(),pullSpend(),pullWeekly(),pullHabits(),pullAch(),
     pullHandbook(),pullRecur(),
     pullSecInsights(),pullSiteUpdates(),pullAnchors(),pullComments(vTodayISO()),
-    pullTabOrder(),pullJn()]);
+    pullTabOrder(),pullJn(),pullPi()]);
   renderActive();
   return _pullFails===0;
 }
@@ -2467,7 +2483,7 @@ async function doSignOut(){if(sb){await sb.auth.signOut();
   MEMOS=[];TODOS=[];RECOS=[];memoLoaded=false;todoLoaded=false;recoLoaded=false;
   PURCHASES=[];spendLoaded=false;WEEKLY=null;weeklyLoaded=false;
   HABITS={live:[],past:[]};habitsLoaded=false;
-  JN=null;jnLoaded=false;
+  JN=null;jnLoaded=false;PI=null;piLoaded=false;
   SECINS={};secInsLoaded=false;SITEUPD=[];siteUpdLoaded=false;
   ACTIONS=[];actionsLoaded=false;
   ACH=[];achLoaded=false;
@@ -3834,15 +3850,32 @@ function tlAnchorGutter(iso){
   const fmm=m=>{const c=((TL_H0*60+m)%1440+1440)%1440;
     return String(Math.floor(c/60)).padStart(2,'0')+':'+String(c%60).padStart(2,'0')};
   const rows=[];
-  ANCHORS.forEach(a=>{
-    if(a.source==='pc')return;   // drawn as state bars below, not as rows
-    const d=new Date(a.at);if(isNaN(d))return;
-    const aIso=lDate(new Date(d.getTime()-TL_H0*3600000));
-    if(aIso!==iso)return;
+  // 门锚点先收一遍。开完一分钟之内就关上的, 合成一条「卧室门开关」;
+  // 她 9/20 说一开一关各占一行太多, 而且这一栏主要是给我判断用的,
+  // 不是给她读的, 所以门的行要浅、要小, 别抢她的注意力。
+  const doorA=ANCHORS.filter(a=>a.source==='door')
+    .map(a=>({t:new Date(a.at).getTime(),st:(a.payload||{}).state,
+              where:(a.payload||{}).where||'卧室'}))
+    .filter(a=>!isNaN(a.t)).sort((x,y)=>x.t-y.t);
+  const doorEv=[];
+  for(let i=0;i<doorA.length;i++){
+    const a=doorA[i],b=doorA[i+1];
+    if(a.st==='open'&&b&&b.st==='close'&&b.where===a.where&&b.t-a.t<=60000){
+      doorEv.push({t:a.t,where:a.where,word:'开关'}); i++;
+    }else doorEv.push({t:a.t,where:a.where,word:a.st==='open'?'开':'关'});
+  }
+  const push=(t0,label,extra)=>{
+    const d=new Date(t0);if(isNaN(d))return;
+    if(lDate(new Date(d.getTime()-TL_H0*3600000))!==iso)return;
     const ws=Math.round((d.getTime()-w0ms(iso))/60000);
     const top=(ws-TL_CLIP_FROM)/60*TL_HPX;
     if(top<-2||top>TL_BODY_PX)return;
-    rows.push({top,ws,label:String(a.label||'').slice(0,30)});
+    rows.push(Object.assign({top,ws,label:String(label||'').slice(0,30)},extra||{}));
+  };
+  doorEv.forEach(e=>push(e.t,`${e.where}门${e.word}`,{door:true}));
+  ANCHORS.forEach(a=>{
+    if(a.source==='pc'||a.source==='door')return;   // pc 画成状态条, door 上面已收
+    push(new Date(a.at).getTime(),a.label);
   });
   // 个护 spans ride the same gutter, drawn as a seated figure + the range
   DB.forEach(r=>{
@@ -3891,7 +3924,7 @@ function tlAnchorGutter(iso){
     if(r.care)return `<div class="tlg-anchor tlg-care${r.mini?' tlg-mini':''}" style="top:${top.toFixed(1)}px"`
       +` onclick="openDetail('${esc(r.id)}')" title="${esc(t('tl.tapDetail'))}">`
       +(r.mini?MINI_ICON:CARE_ICON)+`<span class="tlg-x">${esc(r.label)}</span></div>`;
-    return `<div class="tlg-anchor" style="top:${top.toFixed(1)}px">`
+    return `<div class="tlg-anchor${r.door?' tlg-door':''}" style="top:${top.toFixed(1)}px">`
       +`<span class="tlg-tri">◀</span><span class="tlg-x">${esc(fmm(r.ws))} ${esc(r.label)}</span></div>`;
   }).join('');
 }
@@ -5333,6 +5366,53 @@ function initTabDrag(){
     _drag=null; };
   bar.addEventListener('pointerup',end);
   bar.addEventListener('pointercancel',end);
+}
+let PI=null,piLoaded=false,_piTimer=null;
+async function pullPi(){
+  if(!cloud||!authed)return;
+  try{
+    const {data,error}=await sb.from('pi_status').select('v,updated_at').maybeSingle();
+    if(!error)PI=data||null;
+  }catch(_){}
+  piLoaded=true; renderPi();
+}
+// 状态新鲜度用服务端盖的 updated_at 算，不用树莓派自报的时间。它的钟跑偏了
+// 自报时间会骗人，而「多久没推了」正是她唯一要看的那个数。
+const PI_ROWS=[['door_service','门磁监听'],['agent_service','取指令进程'],
+  ['door_state','门当前'],['door_at','最后一次门事件'],['battery','门磁电量'],
+  ['uptime_s','已运行'],['load1','负载'],['temp_c','温度'],
+  ['host','主机'],['ip_tailnet','tailnet 地址']];
+function piFmt(k,v){
+  if(v==null)return '';
+  if(k==='uptime_s'){const h=Math.floor(v/3600);
+    return h>=24?`${Math.floor(h/24)} 天 ${h%24} 小时`:`${h} 小时 ${Math.floor(v%3600/60)} 分`;}
+  if(k==='battery')return v+'%';
+  if(k==='temp_c')return v+'°C';
+  if(k==='door_state')return v==='open'?'开':(v==='close'?'关':v);
+  if(k==='door_at'){const d=new Date(v);return isNaN(d)?String(v)
+    :d.toLocaleString(LANG==='zh'?'zh-CN':'en-US',{month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',hour12:false});}
+  return String(v);
+}
+function renderPi(){
+  const box=document.getElementById('piBox'); if(!box)return;
+  const f=document.getElementById('piFresh');
+  if(!PI){box.innerHTML='';f.textContent=t('pi.none');f.classList.remove('warn');return}
+  const age=Math.round((Date.now()-new Date(PI.updated_at).getTime())/60000);
+  // 推送节奏是 60 秒，5 分钟没动静就不是网络抖动了。
+  f.textContent=(age<1?'刚刚':age+' 分钟')+t('pi.ago')+(age>5?' · '+t('pi.stale'):'');
+  f.classList.toggle('warn',age>5);
+  const v=PI.v||{}, seen=new Set();
+  let h=PI_ROWS.filter(([k])=>v[k]!=null).map(([k,label])=>{seen.add(k);
+    const raw=v[k], ok=(k.endsWith('_service')?raw==='active':null);
+    const cls=ok===null?'':(ok?' pi-ok':' pi-bad');
+    return `<div class="jn-l"><span class="ln">${esc(label)}</span>
+      <span class="lv${cls}">${esc(piFmt(k,raw))}</span><span class="lh"></span></div>`;}).join('');
+  // 它多推的字段原样列出来，不丢。约定之外的东西悄悄吞掉，就等于我替她决定了什么重要。
+  h+=Object.keys(v).filter(k=>!seen.has(k)).map(k=>
+    `<div class="jn-l"><span class="ln">${esc(k)}</span>
+     <span class="lv">${esc(String(v[k]))}</span><span class="lh"></span></div>`).join('');
+  box.innerHTML=h;
 }
 let JN=null,jnLoaded=false;
 async function pullJn(){
@@ -7531,7 +7611,7 @@ function switchTab(tp){
     // view — otherwise several tabs show no active indicator at all
     if(on&&b.scrollIntoView)try{b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});}catch(_){}
   });
-  ['today','week','month','stat','todo','spend','sleep','diet','sport','add','review','ach','dec','jn'].forEach(s=>
+  ['today','week','month','stat','todo','spend','sleep','diet','sport','add','review','ach','dec','jn','pi'].forEach(s=>
     document.getElementById('tab-'+s).classList.toggle('hidden',s!==tp));
   renderActive();
 }
@@ -7551,6 +7631,7 @@ function renderActive(){
   else if(_tab==='month')renderMonth();
   else if(_tab==='stat')renderStat();
   else if(_tab==='review'){renderReview();if(!siteUpdLoaded)pullSiteUpdates();}
+  else if(_tab==='pi'){pullPi();}
   else if(_tab==='jn'){if(!sopLoaded)pullSop();else renderSop();
     if(!jnLoaded)pullJn();else renderJn();}
   else if(_tab==='sleep'){renderSleepTab();if(!healthLoaded)pullHealth();
@@ -7585,6 +7666,7 @@ function renderActive(){
   window.addEventListener('resize',()=>{clearTimeout(_rzT);
     _rzT=setTimeout(()=>{tlSyncMetrics();renderActive();},180);});
   applyTheme();
+  setInterval(()=>{if(_tab==='pi'&&document.visibilityState==='visible')pullPi();},30000);
   setInterval(applyTheme,5*60000);   // auto day/night re-check
   try{const o=JSON.parse(localStorage.getItem('timelog.taborder')||'null');
       if(Array.isArray(o))applyTabOrder(o);}catch(_){}   // 先用本地的, 云端拉到再覆盖
