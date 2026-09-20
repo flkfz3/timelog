@@ -575,8 +575,19 @@
   .tlg-care .tlg-x{color:var(--care-ink,#0284c7)}
   .tlg-anchor.tlg-door{font-size:8.5px;opacity:.45;max-width:118px}
   .tlg-anchor.tlg-door .tlg-tri{color:var(--muted);font-size:7px;opacity:.7}
-  .pi-ok{color:#22a06b}.pi-bad{color:#c2410c}
   .jn-hint.warn{color:#c2410c}
+  .pi-svc{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
+  .pi-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;
+    padding:4px 10px;border-radius:999px;background:var(--line);color:var(--ink)}
+  .pi-pill i{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .pi-pill.on i{background:#22a06b}.pi-pill.off i{background:#c2410c}
+  .pi-pill.off{color:#c2410c}
+  .pi-r{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+    padding:7px 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  .pi-r b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;
+    text-align:right;white-space:nowrap}
+  .pi-foot{margin-top:10px;font-size:11px;color:var(--faint);
+    font-variant-numeric:tabular-nums}
   .plan-sum{font-size:11.5px;color:var(--muted);font-weight:500;float:right;
     font-variant-numeric:tabular-nums}
   .plan-row{border-bottom:1px solid var(--line)}
@@ -1762,7 +1773,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20d';
+const BUILD='2026-09-20e';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5398,24 +5409,34 @@ function renderPi(){
   const box=document.getElementById('piBox'); if(!box)return;
   const f=document.getElementById('piFresh');
   if(!PI){box.innerHTML='';f.textContent=t('pi.none');f.classList.remove('warn');return}
-  const age=Math.round((Date.now()-new Date(PI.updated_at).getTime())/60000);
+  const secs=Math.round((Date.now()-new Date(PI.updated_at).getTime())/1000);
   // 推送节奏是 60 秒，5 分钟没动静就不是网络抖动了。
-  f.textContent=(age<1?'刚刚':age+' 分钟')+t('pi.ago')+(age>5?' · '+t('pi.stale'):'');
-  f.classList.toggle('warn',age>5);
-  const v=PI.v||{}, seen=new Set(['door_where']);
-  let h=PI_ROWS.filter(([k])=>v[k]!=null).map(([k,label])=>{seen.add(k);
-    let raw=v[k];
-    if(k==='door_state'&&v.door_where)raw=piFmt(k,raw)+'（'+v.door_where+'门）';
-    const ok=(k.endsWith('_service')?raw==='active':null);
-    const cls=ok===null?'':(ok?' pi-ok':' pi-bad');
-    const shown=(k==='door_state'&&v.door_where)?raw:piFmt(k,raw);
-    return `<div class="jn-l"><span class="ln">${esc(label)}</span>
-      <span class="lv${cls}">${esc(shown)}</span><span class="lh"></span></div>`;}).join('');
-  // 它多推的字段原样列出来，不丢。约定之外的东西悄悄吞掉，就等于我替她决定了什么重要。
-  h+=Object.keys(v).filter(k=>!seen.has(k)).map(k=>
-    `<div class="jn-l"><span class="ln">${esc(k)}</span>
-     <span class="lv">${esc(String(v[k]))}</span><span class="lh"></span></div>`).join('');
-  box.innerHTML=h;
+  f.textContent=(secs<90?secs+' 秒':Math.round(secs/60)+' 分钟')+t('pi.ago')
+    +(secs>300?' · '+t('pi.stale'):'');
+  f.classList.toggle('warn',secs>300);
+  const v=PI.v||{};
+  const svc=[['door_service','门磁监听'],['agent_service','取指令进程']]
+    .filter(([k])=>v[k]!=null)
+    .map(([k,lab])=>`<span class="pi-pill${v[k]==='active'?' on':' off'}">
+      <i></i>${esc(lab)}</span>`).join('');
+  let doorV=v.door_state==null?null
+    :(v.door_state==='open'?'开着':v.door_state==='close'?'关着':String(v.door_state))
+     +(v.door_where?' · '+v.door_where+'门':'');
+  const rows=[['门当前',doorV],
+              ['最后一次门事件',piFmt('door_at',v.door_at)],
+              ['门磁电量',v.battery==null?null:v.battery+'%'],
+              ['已运行',piFmt('uptime_s',v.uptime_s)],
+              ['负载',v.load1==null?null:Number(v.load1).toFixed(2)],
+              ['温度',v.temp_c==null?null:Number(v.temp_c).toFixed(1)+'°C']];
+  // 约定之外的字段原样接在后面, 不吞。悄悄丢掉就等于我替她决定了什么重要。
+  const known=new Set(['door_service','agent_service','door_state','door_where',
+                       'door_at','battery','uptime_s','load1','temp_c','host','ip_tailnet']);
+  Object.keys(v).filter(k=>!known.has(k)).forEach(k=>rows.push([k,String(v[k])]));
+  const list=rows.filter(r=>r[1]!=null&&r[1]!=='')
+    .map(([a,b])=>`<div class="pi-r"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('');
+  const foot=[v.host,v.ip_tailnet].filter(Boolean).map(esc).join(' · ');
+  box.innerHTML=(svc?`<div class="pi-svc">${svc}</div>`:'')+list
+    +(foot?`<div class="pi-foot">${foot}</div>`:'');
 }
 let JN=null,jnLoaded=false;
 async function pullJn(){
