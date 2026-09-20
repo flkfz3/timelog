@@ -1762,7 +1762,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20c';
+const BUILD='2026-09-20d';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5388,7 +5388,7 @@ function piFmt(k,v){
     return h>=24?`${Math.floor(h/24)} 天 ${h%24} 小时`:`${h} 小时 ${Math.floor(v%3600/60)} 分`;}
   if(k==='battery')return v+'%';
   if(k==='temp_c')return v+'°C';
-  if(k==='door_state')return v==='open'?'开':(v==='close'?'关':v);
+  if(k==='door_state')return v==='open'?'开着':(v==='close'?'关着':v);
   if(k==='door_at'){const d=new Date(v);return isNaN(d)?String(v)
     :d.toLocaleString(LANG==='zh'?'zh-CN':'en-US',{month:'2-digit',day:'2-digit',
       hour:'2-digit',minute:'2-digit',hour12:false});}
@@ -5402,12 +5402,15 @@ function renderPi(){
   // 推送节奏是 60 秒，5 分钟没动静就不是网络抖动了。
   f.textContent=(age<1?'刚刚':age+' 分钟')+t('pi.ago')+(age>5?' · '+t('pi.stale'):'');
   f.classList.toggle('warn',age>5);
-  const v=PI.v||{}, seen=new Set();
+  const v=PI.v||{}, seen=new Set(['door_where']);
   let h=PI_ROWS.filter(([k])=>v[k]!=null).map(([k,label])=>{seen.add(k);
-    const raw=v[k], ok=(k.endsWith('_service')?raw==='active':null);
+    let raw=v[k];
+    if(k==='door_state'&&v.door_where)raw=piFmt(k,raw)+'（'+v.door_where+'门）';
+    const ok=(k.endsWith('_service')?raw==='active':null);
     const cls=ok===null?'':(ok?' pi-ok':' pi-bad');
+    const shown=(k==='door_state'&&v.door_where)?raw:piFmt(k,raw);
     return `<div class="jn-l"><span class="ln">${esc(label)}</span>
-      <span class="lv${cls}">${esc(piFmt(k,raw))}</span><span class="lh"></span></div>`;}).join('');
+      <span class="lv${cls}">${esc(shown)}</span><span class="lh"></span></div>`;}).join('');
   // 它多推的字段原样列出来，不丢。约定之外的东西悄悄吞掉，就等于我替她决定了什么重要。
   h+=Object.keys(v).filter(k=>!seen.has(k)).map(k=>
     `<div class="jn-l"><span class="ln">${esc(k)}</span>
