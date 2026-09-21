@@ -586,6 +586,14 @@
     padding:7px 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
   .pi-r b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;
     text-align:right;white-space:nowrap}
+  .pi-sw{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:8px 0 4px;font-size:13px}
+  .pi-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 6px 0 8px}
+  .pi-dot.on{background:#22a06b}.pi-dot.off{background:#94a3b8}
+  .pi-btn{font-size:12px;padding:5px 14px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);cursor:pointer}
+  .pi-btn:disabled{opacity:.5}
+  .pi-ok{color:#22a06b}.pi-bad{color:#c2410c}
   .pi-foot{margin-top:10px;font-size:11px;color:var(--faint);
     font-variant-numeric:tabular-nums}
   .sub-in{color:var(--faint);font-size:11px;margin-left:6px}
@@ -1465,7 +1473,7 @@
     <div class="card">
       <div class="sc-title" data-i18n="pi.title"></div>
       <div class="jn-hint" id="piFresh"></div>
-      <div id="piBox"></div>
+      <div id="piSw"></div><div id="piBox"></div><div id="piEv"></div>
     </div>
   </section>
   <section id="tab-jn" class="hidden">
@@ -1792,7 +1800,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20j';
+const BUILD='2026-09-20k';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5456,7 +5464,19 @@ function renderSubs(){
    +`</div><div class="sub-note">${months[0]} 到 ${months[months.length-1]}</div>`;
 }
 let PI=null,piLoaded=false,_piTimer=null;
-let DOORS={};
+let DOORS={}, PFLAG=null, PEV=[];
+async function togglePipe(){
+  if(!PFLAG)return;
+  const b=document.getElementById('piSwBtn'); if(b)b.disabled=true;
+  try{
+    const {error}=await sb.from('pipeline_flags')
+      .update({enabled:!PFLAG.enabled, updated_at:new Date().toISOString(), updated_by:'site'})
+      .eq('name','recording');
+    if(error)throw error;
+    toast(!PFLAG.enabled?'已请求开启录音':'已请求关闭录音');
+  }catch(e){toast(t('msg.cloudErr'),'err');console.warn('togglePipe',e)}
+  await pullPi();
+}
 async function pullPi(){
   if(!cloud||!authed)return;
   try{
@@ -5467,6 +5487,10 @@ async function pullPi(){
     const d=await sb.from('door_probe').select('at,state,where_')
       .eq('testing',false).order('at',{ascending:false}).limit(40);
     DOORS={};(d.data||[]).forEach(r=>{if(!DOORS[r.where_])DOORS[r.where_]=r});
+    const f=await sb.from('pipeline_flags').select('*').eq('name','recording').maybeSingle();
+    PFLAG=f.data||null;
+    const ev=await sb.from('pipeline_events').select('*').order('at',{ascending:false}).limit(12);
+    PEV=ev.data||[];
   }catch(_){}
   piLoaded=true; renderPi();
 }
@@ -5490,6 +5514,25 @@ function piFmt(k,v){
 }
 function renderPi(){
   const box=document.getElementById('piBox'); if(!box)return;
+  // 录音总开关。这一块先做控制不做内容：客厅麦克风录到的不只是她，
+  // 室友没同意过，所以转录文本进不进库要她亲口定。开关只会减少暴露，先给她。
+  const SW=document.getElementById('piSw');
+  if(SW){
+    SW.innerHTML = PFLAG
+      ? `<div class="pi-sw"><span><b>客厅录音</b>
+           <i class="pi-dot ${PFLAG.enabled?'on':'off'}"></i>${PFLAG.enabled?'开着':'已关'}</span>
+           <button id="piSwBtn" class="pi-btn" onclick="togglePipe()">${PFLAG.enabled?'关掉':'开启'}</button></div>
+         <div class="sub-note">按下只是改云端的标志，两台设备各自每 60 秒来读一次再执行。
+           下面那条日志记的是设备真正切换成功的时刻，不是你按按钮的时刻。</div>`
+      : '';
+  }
+  const EV=document.getElementById('piEv');
+  if(EV) EV.innerHTML = PEV.length
+    ? `<div class="sub-note" style="margin-top:12px">录音启停实况</div>`
+      + PEV.map(e=>`<div class="pi-r"><span>${esc(e.who)}</span>
+          <b class="${e.state==='started'?'pi-ok':'pi-bad'}">${e.state==='started'?'已开始':'已停止'}
+          · ${esc(piFmt('door_at',e.at))}</b></div>`).join('')
+    : '';
   const f=document.getElementById('piFresh');
   if(!PI){box.innerHTML='';f.textContent=t('pi.none');f.classList.remove('warn');return}
   const secs=Math.round((Date.now()-new Date(PI.updated_at).getTime())/1000);
