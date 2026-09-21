@@ -574,6 +574,8 @@
 .tlg-care.tlg-mini .tlg-x{color:#22a06b}
   .tlg-care .tlg-x{color:var(--care-ink,#0284c7)}
   .tlg-anchor.tlg-door{font-size:8.5px;opacity:.45;max-width:118px}
+  .tlg-doorbar{position:absolute;left:5px;width:2px;border-radius:1px;
+    background:var(--muted);opacity:.35;pointer-events:none}
   .tlg-anchor.tlg-door .tlg-tri{color:var(--muted);font-size:7px;opacity:.7}
   .jn-hint.warn{color:#c2410c}
   .pi-svc{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
@@ -1807,7 +1809,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20l';
+const BUILD='2026-09-20m';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -3921,7 +3923,29 @@ function tlAnchorGutter(iso){
     if(top<-2||top>TL_BODY_PX)return;
     rows.push(Object.assign({top,ws,label:String(label||'').slice(0,30)},extra||{}));
   };
-  doorEv.forEach(e=>push(e.t,`${e.where}门${e.word}`,{door:true}));
+  const DOOR_GAP=30*60000;   // 相隔 30 分钟以内算同一段进出
+  const dbars=[];
+  Object.values(doorEv.reduce((a,e)=>((a[e.where]=a[e.where]||[]).push(e),a),{}))
+   .forEach(list=>{
+    let g=[];
+    const flush=()=>{
+      if(!g.length)return;
+      if(g.length===1){push(g[0].t,`${g[0].where}门${g[0].word}`,{door:true});g=[];return}
+      // 一段里有好几次, 画一条线, 端点写一次, 具体时刻留在库里随时能查
+      const a=g[0], z=g[g.length-1], w=a.where;
+      const ws=Math.round((a.t-w0ms(iso))/60000), we=Math.round((z.t-w0ms(iso))/60000);
+      const top=(ws-TL_CLIP_FROM)/60*TL_HPX, bot=(we-TL_CLIP_FROM)/60*TL_HPX;
+      if(!(bot<0||top>TL_BODY_PX)){
+        const t0=Math.max(top,0), t1=Math.min(bot,TL_BODY_PX), h=Math.max(t1-t0,3);
+        const lab=`${fmm(ws)}–${fmm(we)} ${w}门进出 ${g.length} 次`;
+        dbars.push(`<div class="tlg-doorbar" style="top:${t0.toFixed(1)}px;height:${h.toFixed(1)}px" title="${esc(lab)}"></div>`);
+        rows.push({top:t0+h/2, ws, door:true, label:lab});
+      }
+      g=[];
+    };
+    list.forEach(e=>{ if(g.length && e.t-g[g.length-1].t>DOOR_GAP) flush(); g.push(e); });
+    flush();
+   });
   ANCHORS.forEach(a=>{
     if(a.source==='pc'||a.source==='door')return;   // pc 画成状态条, door 上面已收
     push(new Date(a.at).getTime(),a.label);
@@ -3962,7 +3986,7 @@ function tlAnchorGutter(iso){
   // anchor whose text wraps to two lines (11+ chars at mobile width) 27px
   const rowH=r=>(r.care||r.pc)?20:(String(r.label).length>10?27:15);
   let prevCenter=-1e9, prevH=0;
-  return bars+rows.map(r=>{
+  return bars+dbars.join('')+rows.map(r=>{
     const h=rowH(r);
     const top=Math.max(r.top,prevCenter+prevH/2+h/2+1);
     prevCenter=top; prevH=h;
