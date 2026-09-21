@@ -876,6 +876,11 @@
   .sc-delta.up,.sc-line.up{color:var(--accent-ink)}
   .sc-delta.down{color:var(--muted)}
   .sc-line{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.65}
+  .sc-minis{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+  .sc-mini{display:grid;grid-template-columns:2.6em 1fr auto;align-items:center;gap:6px;
+    font-size:11.5px;color:var(--muted)}
+  .sc-mini i{display:block;height:6px;border-radius:3px;opacity:.85;min-width:4px}
+  .sc-mini b{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
   .sc-row{display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0;
     border-bottom:1px dashed var(--line)}
   .sc-row:last-child{border-bottom:none}
@@ -1825,7 +1830,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20r';
+const BUILD='2026-09-20s';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -4654,7 +4659,13 @@ function cardGrowth(A,vt){
   // same allocation as the donut legend: 成长+学习 here must equal the two
   // legend rows added together
   const TT=catTenths(A.byCat,A.tot);
+  // 9/20 评审：这张卡上半截空着、只有底下一个数，像坏了。补学习/提升两行迷你条，
+  // 数字仍是甜甜圈图例那两行之和（同一份 tenths 分配）。
+  const tot=Math.max(TT.growth||0,TT.study||0,1);
+  const mini=['study','growth'].filter(c=>TT[c]).map(c=>`<div class="sc-mini"><span>${esc(t('cat.'+c))}</span>
+      <i style="width:${Math.round(100*TT[c]/tot)}%;background:${catColor(c)}"></i><b>${fmtTenths(TT[c])}</b></div>`).join('');
   return scCard('sc.growth',`<span class="sc-big">${fmtTenths(sumTenths(TT,['growth','study']))}</span>
+    ${mini?`<div class="sc-minis">${mini}</div>`:''}
     ${lines.length?`<div class="sc-line">${lines.map(esc).join(' · ')}</div>`:''}`,'sc-compact');
 }
 // 5a. 待办 — HER action items (she checks these off herself): undone
