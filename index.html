@@ -876,6 +876,7 @@
   .sc-delta.up,.sc-line.up{color:var(--accent-ink)}
   .sc-delta.down{color:var(--muted)}
   .sc-line{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.65}
+  .sc-warn{color:#c2410c}
   .sc-minis{margin-top:8px;display:flex;flex-direction:column;gap:5px}
   .sc-mini{display:grid;grid-template-columns:2.6em 1fr auto;align-items:center;gap:6px;
     font-size:11.5px;color:var(--muted)}
@@ -1830,7 +1831,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20t';
+const BUILD='2026-09-20v';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1919,6 +1920,7 @@ const I18N={
   'f.parallel':'Parallel (alongside another activity)',
   'stat.parallel':'Parallel time',
   'stat.parNote':'not counted in the total above',
+  'sc.overlapNote':'exceeds the period by {h}: some blocks overlap, see 审查 › 时间重叠',
   'mo.cellNote':'number in each cell = non-sleep hours logged that day',
   'pv.go':'Open day',
   'hs.sleep':'Sleep','hs.ex':'Exercise','hs.diet':'Diet',
@@ -2109,6 +2111,7 @@ const I18N={
   'f.parallel':'伴随（和别的事同时进行）',
   'stat.parallel':'伴随时长',
   'stat.parNote':'不计入上方总时长',
+  'sc.overlapNote':'超出周期 {h}，有时间块重叠，去审查页「时间重叠」看',
   'mo.cellNote':'格内数字 = 当日非睡眠记录小时数',
   'pv.go':'前往',
   'hs.sleep':'睡眠','hs.ex':'运动','hs.diet':'吃饭',
@@ -4341,7 +4344,7 @@ function ringSvg(arcs,opts){
       font-size="${opts.labelSize||9}" font-weight="700"
       style="fill:var(--ink)">${esc(opts.label)}</text>`;
   }
-  return `<svg class="${opts.cls||''}" viewBox="0 0 32 32" width="${size}" height="${size}">
+  return `<svg class="${opts.cls||''}" data-chart-type="ring" viewBox="0 0 32 32" width="${size}" height="${size}">
     <g transform="rotate(-90 16 16)">${rings}</g>${text}</svg>`;
 }
 // Category-aggregated arcs over a real-time period: one arc per category
@@ -4521,8 +4524,11 @@ function cardWhere(A,n){
   const ring=ringSvg(catArcs(A.byCat,periodMin,c=>fmtTenths(TT[c])),
     {size:130,label:fmtHours(A.tot/60),labelSize:5.5,minLen:0.2});
   const pct=Math.round(A.tot/periodMin*100);
+  // 记录超过周期本身（9/20 那张 106%）只有一种来历：非伴随块之间重叠了。
+  // 直接说出来并指到审查页，不能让 106% 像个普通数字摆着。
+  const over=A.tot>periodMin?`<span class="sc-warn"> · ${esc(t('sc.overlapNote',{h:fmtHours((A.tot-periodMin)/60)}))}</span>`:'';
   const shareLine=`<div class="sc-line" style="margin-top:6px">${esc(t('sc.recorded',{p:pct,n}))}
-    <span class="faint">· ${esc(A.range||'')}</span></div>`;
+    <span class="faint">· ${esc(A.range||'')}</span>${over}</div>`;
   const rows=Object.entries(A.byCat).sort((a,b)=>b[1]-a[1]);
   const list=rows.map(([c])=>
     `<div class="sc-row"><span class="dot" style="background:${catColor(c)}"></span>
@@ -6467,7 +6473,7 @@ function renderKcal(){
   let svg=`<line x1="${L}" x2="${W-8}" y1="${H-PB}" y2="${H-PB}" style="stroke:var(--line)"/>
     <text x="${L}" y="${H-5}" font-size="8.5" style="fill:var(--muted)">${days[0].slice(5)}</text>
     <text x="${W-8}" y="${H-5}" font-size="8.5" style="fill:var(--muted)" text-anchor="end">${days[days.length-1].slice(5)}</text>
-    <text x="${W-8}" y="${(yOf(max)+8).toFixed(1)}" font-size="8" style="fill:var(--faint)" text-anchor="end">${Math.round(max)}</text>`;
+    <text x="${L}" y="${(yOf(max)-2).toFixed(1)}" font-size="8" style="fill:var(--faint)">${Math.round(max)}</text>`;
   days.forEach((D,i)=>{
     const v=vals[i];if(!v)return;
     const items=DIET.filter(x=>x.date===D&&kcalOf(x)!=null);
