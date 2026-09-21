@@ -588,10 +588,15 @@
     padding:7px 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
   .pi-r b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;
     text-align:right;white-space:nowrap}
-  .tr-g{margin-top:10px}
-  .tr-h{font-size:11px;color:var(--faint);padding:4px 0;border-top:1px solid var(--line)}
-  .tr-r{font-size:12.5px;line-height:1.6;padding:2px 0;display:flex;gap:8px}
-  .tr-t{flex:0 0 38px;color:var(--faint);font-variant-numeric:tabular-nums;font-size:11px;padding-top:2px}
+  .tr-tl{position:relative;margin:8px 0 0 5px;padding-left:16px;border-left:2px solid var(--line)}
+  .tr-n,.tr-day{position:relative;padding:5px 0 5px 4px;font-size:12.5px;line-height:1.55;
+    display:flex;gap:8px;align-items:baseline}
+  .tr-n i,.tr-day i{position:absolute;left:-23px;top:11px;width:8px;height:8px;border-radius:50%;
+    background:var(--accent);border:2px solid var(--card)}
+  .tr-day{font-size:11px;color:var(--faint);padding-top:10px}
+  .tr-day i{background:var(--faint);width:6px;height:6px;left:-22px;top:15px}
+  .tr-t{flex:0 0 36px;color:var(--faint);font-variant-numeric:tabular-nums;font-size:11px}
+  .tr-x{flex:1;min-width:0;overflow-wrap:anywhere}
   .pi-sw{display:flex;justify-content:space-between;align-items:center;gap:12px;
     padding:8px 0 4px;font-size:13px}
   .pi-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 6px 0 8px}
@@ -1831,7 +1836,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20v';
+const BUILD='2026-09-21a';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5678,18 +5683,21 @@ function renderPi(){
   }
   const TB=document.getElementById('trBox');
   if(TB){
-    // 同一小时的并到一组, 不然一条一行会把整页冲垮。
-    const g={};
-    TRS.forEach(r=>{const d=new Date(r.at);
-      const k=d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',hour12:false});
-      (g[k]=g[k]||[]).push(r)});
-    const ks=Object.keys(g);
-    TB.innerHTML = ks.length
-      ? `<div class="jn-cnt">48 小时内 <b>${TRS.length}</b> 条</div>`
-        + ks.map(k=>`<div class="tr-g"><div class="tr-h">${esc(k)} 时</div>`
-          + g[k].map(r=>`<div class="tr-r"><span class="tr-t">${
-              new Date(r.at).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})
-            }</span>${esc(r.text)}</div>`).join('') + `</div>`).join('')
+    // 她 9/21 画的草图：左边一条竖线把每条转录串成时间轴，一条一个圆点，
+    // 最早的在上、最近的在下。跨天的地方插一个日期节点。
+    const rows=TRS.slice().sort((a,b)=>new Date(a.at)-new Date(b.at));
+    let lastDay='';
+    TB.innerHTML = rows.length
+      ? `<div class="jn-cnt">48 小时内 <b>${rows.length}</b> 条</div><div class="tr-tl">`
+        + rows.map(r=>{
+            const d=new Date(r.at);
+            const day=d.toLocaleDateString('zh-CN',{month:'numeric',day:'numeric'});
+            const head=day!==lastDay?`<div class="tr-day"><i></i>${esc(day)}</div>`:'';
+            lastDay=day;
+            return head+`<div class="tr-n"><i></i><span class="tr-t">${
+              d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})
+            }</span><span class="tr-x">${esc(r.text)}</span></div>`;}).join('')
+        + `</div>`
       : `<div class="sc-empty">48 小时内没有转录。录音关着、或者这段时间没人说话，都会是空的。</div>`;
   }
   const EV=document.getElementById('piEv');
