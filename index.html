@@ -586,6 +586,10 @@
     padding:7px 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
   .pi-r b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;
     text-align:right;white-space:nowrap}
+  .tr-g{margin-top:10px}
+  .tr-h{font-size:11px;color:var(--faint);padding:4px 0;border-top:1px solid var(--line)}
+  .tr-r{font-size:12.5px;line-height:1.6;padding:2px 0;display:flex;gap:8px}
+  .tr-t{flex:0 0 38px;color:var(--faint);font-variant-numeric:tabular-nums;font-size:11px;padding-top:2px}
   .pi-sw{display:flex;justify-content:space-between;align-items:center;gap:12px;
     padding:8px 0 4px;font-size:13px}
   .pi-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 6px 0 8px}
@@ -1475,6 +1479,9 @@
       <div class="jn-hint" id="piFresh"></div>
       <div id="piSw"></div><div id="piBox"></div><div id="piEv"></div>
     </div>
+    <div class="card"><div class="sc-title" data-i18n="tr.title"></div>
+      <div class="jn-hint" data-i18n="tr.hint"></div>
+      <div id="trBox"></div></div>
   </section>
   <section id="tab-jn" class="hidden">
     <div class="card hidden" id="sopCard"><div id="sopBox"></div></div>
@@ -1800,7 +1807,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20k';
+const BUILD='2026-09-20l';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -2049,6 +2056,7 @@ const I18N={
   'cyc.typ':'last {n}: cycle {c}d · period {p}d',
   'tabs.edit':'reorder','tabs.done':'done','tabs.saved':'order saved',
   'tab.jn':'Playbook',
+  'tr.title':'Transcripts','tr.hint':'last 48 hours, private to you',
   'sub.title':'Subscriptions & Auto Pay','sub.hint':'what leaves each account every month',
   'tab.pi':'\ud83c\udf53', 'pi.title':'\ud83c\udf53', 'pi.none':'no status received yet',
   'pi.stale':'stale', 'pi.ago':'ago',
@@ -2240,6 +2248,7 @@ const I18N={
   'cyc.typ':'近 {n} 次: 周期 {c} 天 · 经期 {p} 天',
   'tabs.edit':'排序','tabs.done':'完成','tabs.saved':'顺序记住了',
   'tab.jn':'锦囊',
+  'tr.title':'说话记录','tr.hint':'往前 48 小时，只有你登录能看',
   'sub.title':'订阅与自动扣款','sub.hint':'每月从哪个账户流出多少，下一笔什么时候扣',
   'tab.pi':'\ud83c\udf53', 'pi.title':'\ud83c\udf53', 'pi.none':'还没收到过树莓派的状态',
   'pi.stale':'已经不新鲜了', 'pi.ago':'前更新',
@@ -5464,7 +5473,7 @@ function renderSubs(){
    +`</div><div class="sub-note">${months[0]} 到 ${months[months.length-1]}</div>`;
 }
 let PI=null,piLoaded=false,_piTimer=null;
-let DOORS={}, PFLAG=null, PEV=[];
+let DOORS={}, PFLAG=null, PEV=[], TRS=[];
 async function togglePipe(){
   if(!PFLAG)return;
   const b=document.getElementById('piSwBtn'); if(b)b.disabled=true;
@@ -5491,6 +5500,11 @@ async function pullPi(){
     PFLAG=f.data||null;
     const ev=await sb.from('pipeline_events').select('*').order('at',{ascending:false}).limit(12);
     PEV=ev.data||[];
+    // 往前 48 小时。她 9/20 定的窗口, 再往前的留在库里但不摆在页面上。
+    const tr=await sb.from('transcripts').select('at,lang,text')
+      .gte('at',new Date(Date.now()-48*3600000).toISOString())
+      .order('at',{ascending:false}).limit(400);
+    TRS=tr.data||[];
   }catch(_){}
   piLoaded=true; renderPi();
 }
@@ -5525,6 +5539,22 @@ function renderPi(){
          <div class="sub-note">按下只是改云端的标志，两台设备各自每 60 秒来读一次再执行。
            下面那条日志记的是设备真正切换成功的时刻，不是你按按钮的时刻。</div>`
       : '';
+  }
+  const TB=document.getElementById('trBox');
+  if(TB){
+    // 同一小时的并到一组, 不然一条一行会把整页冲垮。
+    const g={};
+    TRS.forEach(r=>{const d=new Date(r.at);
+      const k=d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',hour12:false});
+      (g[k]=g[k]||[]).push(r)});
+    const ks=Object.keys(g);
+    TB.innerHTML = ks.length
+      ? `<div class="jn-cnt">48 小时内 <b>${TRS.length}</b> 条</div>`
+        + ks.map(k=>`<div class="tr-g"><div class="tr-h">${esc(k)} 时</div>`
+          + g[k].map(r=>`<div class="tr-r"><span class="tr-t">${
+              new Date(r.at).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})
+            }</span>${esc(r.text)}</div>`).join('') + `</div>`).join('')
+      : `<div class="sc-empty">48 小时内没有转录。录音关着、或者这段时间没人说话，都会是空的。</div>`;
   }
   const EV=document.getElementById('piEv');
   if(EV) EV.innerHTML = PEV.length
