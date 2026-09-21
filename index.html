@@ -603,11 +603,26 @@
   .pi-foot{margin-top:10px;font-size:11px;color:var(--faint);
     font-variant-numeric:tabular-nums}
   .sub-in{color:var(--faint);font-size:11px;margin-left:6px}
-  .sub-r{padding:9px 0;border-top:1px solid var(--line)}
-  .sub-h{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
-  .sub-amt{font-variant-numeric:tabular-nums;font-weight:600}
-  .sub-m{font-size:11.5px;color:var(--muted);margin-top:2px}
-  .sub-svg{width:100%;height:110px;margin-top:12px;overflow:visible}
+  .sub-cap{font-size:11px;color:var(--faint);margin:14px 0 4px;letter-spacing:.02em}
+  .sub-cap:first-child{margin-top:6px}
+  .sub-tb{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto}
+  .sub-tb th{font-size:10.5px;font-weight:500;color:var(--faint);text-align:left;
+    padding:0 7px 5px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+  .sub-tb td{padding:7px 7px 7px 0;border-bottom:1px solid var(--line);
+    vertical-align:top;line-height:1.3}
+  .sub-tb tbody tr:last-child td{border-bottom:none}
+  .sub-tb th:last-child,.sub-tb td:last-child{padding-right:0}
+  .sub-tb .num,.sub-tb th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .sub-tb tbody tr[data-pv]{cursor:pointer}
+  .sub-tb tbody tr[data-pv]:hover{background:var(--hover,rgba(127,127,127,.07))}
+  .sub-sub{display:block;font-size:10px;color:var(--faint);margin-top:1px;
+    font-weight:400;font-variant-numeric:tabular-nums}
+  .sub-soon{color:#c2410c;font-weight:600}
+  .sub-dot{display:inline-block;width:7px;height:7px;border-radius:2px;
+    margin-right:5px;vertical-align:1px}
+  .sub-tf td{border-top:1px solid var(--line);border-bottom:none;padding-top:8px;
+    font-size:11.5px;font-weight:600;color:var(--muted)}
+  .sub-svg{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
   .sub-lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
   .sub-lg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
   .sub-note{font-size:11px;color:var(--faint);margin-top:6px}
@@ -1809,7 +1824,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20m';
+const BUILD='2026-09-20n';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5454,47 +5469,121 @@ async function pullSubs(){
 function renderSubs(){
   const box=document.getElementById('subList'); if(!box)return;
   const act=SUBS.filter(x=>x.active!==false);
+  const cols=['#2563eb','#059669','#c2410c','#7c3aed','#be185d'];
+  // 名字都是「中文标签 + 供应商」，表格窄，把标签放主行、供应商放副行，
+  // 这样五列在 390 的手机上也不用横向滚动。
+  const head=n=>String(n||'').split(/\s+/)[0];
+  const tail=n=>String(n||'').split(/\s+/).slice(1).join(' ');
+  const money=v=>Number(v||0).toLocaleString('en-US',
+    {minimumFractionDigits:2,maximumFractionDigits:2});
+  const billDay=x=>{const m=/(\d+)\s*号/.exec(x.bill_note||'');
+    return m?(/前后|左右/.test(x.bill_note)?'≈ ':'')+m[1]+' 号':'—'};
+
   // 每个账户每月固定要出多少。她 9/20 把工资拆成 Chase 90 / BoA 10，
   // 而电和网都从 BoA 扣，这一栏就是为了让那个矛盾自己显出来。
   const out={};act.forEach(x=>{out[x.account]=(out[x.account]||0)+Number(x.amount||0)});
   const A=document.getElementById('subAcct');
-  A.innerHTML=ACCTS.map(a=>{
-    const o=out[a.name]||0;
-    return `<div class="pi-r"><span>${esc(a.name)}<span class="sub-in">${esc(a.inflow_note||'')}</span></span>
-      <b>${o?'每月出 '+o.toFixed(2):'无固定扣款'}</b></div>`;}).join('');
+  A.innerHTML=`<div class="sub-cap">账户</div>
+    <table class="sub-tb"><thead><tr><th>账户</th><th>进账</th>
+      <th class="num">每月固定出账</th></tr></thead><tbody>`
+    +ACCTS.map(a=>`<tr><td><b>${esc(head(a.name))}</b>
+        <span class="sub-sub">${esc(tail(a.name))||'&nbsp;'}</span></td>
+      <td>${esc(a.inflow_note||'—')}</td>
+      <td class="num">${out[a.name]?money(out[a.name]):'—'}</td></tr>`).join('')
+    +`</tbody></table>`;
+
   const today=new Date();today.setHours(0,0,0,0);
-  box.innerHTML=act.slice().sort((x,y)=>String(x.next_draft||'9')<String(y.next_draft||'9')?-1:1)
-   .map(x=>{
+  const pvReg=pvScope('sub');
+  const sorted=act.slice().sort((x,y)=>
+    String(x.next_draft||'9')<String(y.next_draft||'9')?-1:1);
+  box.innerHTML=(sorted.length?`<div class="sub-cap">每月固定扣款</div>
+    <table class="sub-tb"><thead><tr><th>项目</th><th class="num">月额</th>
+      <th>扣款账户</th><th>出账</th><th>下次扣款</th></tr></thead><tbody>`
+   +sorted.map(x=>{
+    const i=act.indexOf(x);
     const hist=SUBPAY.filter(p=>p.sub_id===x.id).map(p=>Number(p.amount));
     const avg=hist.length?hist.reduce((s,v)=>s+v,0)/hist.length:null;
-    let days='';
+    let days='',soon=false;
     if(x.next_draft){const d=Math.round((new Date(x.next_draft+'T00:00:00')-today)/86400000);
-      days=d<0?'已过':d===0?'今天':d+' 天后';}
-    return `<div class="sub-r"><div class="sub-h"><b>${esc(x.name)}</b>
-        <span class="sub-amt">${Number(x.amount||0).toFixed(2)}</span></div>
-      <div class="sub-m">${esc(x.account)} · ${esc(x.method||'')}
-        ${avg!=null&&hist.length>1?' · 近'+hist.length+'期均 '+avg.toFixed(2):''}</div>
-      <div class="sub-m">出账 ${esc(x.bill_note||'?')}</div>
-      <div class="sub-m">扣款 ${esc(x.draft_note||'?')}${
-        x.next_draft?' · <b>下次 '+x.next_draft.slice(5)+'（'+days+'）</b>':''}</div></div>`;}).join('')
-   || `<div class="sc-empty">还没有登记任何订阅</div>`;
-  // 逐项月度折线。数据少的时候画出来是断的, 那就让它断着, 不补点。
+      days=d<0?'已过':d===0?'今天扣':'还有 '+d+' 天';soon=d>=0&&d<=3;}
+    const pid=pvReg(pvT(`<span class="pv-dot" style="background:${cols[i%5]}"></span>`
+        +esc(x.name))
+      +pvRow('月额',money(x.amount))
+      +pvRow('扣款账户',esc(x.account))
+      +pvRow('扣款方式',esc(x.method||'—'))
+      +(avg!=null?pvRow('近 '+hist.length+' 期均值',money(avg)):'')
+      +(x.next_draft?pvRow('下次扣款',x.next_draft+(days?'（'+days+'）':'')):'')
+      +pvLine('出账：'+esc(x.bill_note||'未知'))
+      +pvLine('扣款：'+esc(x.draft_note||'未知')));
+    return `<tr data-pv="${pid}">
+      <td><span class="sub-dot" style="background:${cols[i%5]}"></span><b>${esc(head(x.name))}</b>
+        <span class="sub-sub">${esc(tail(x.name))||'&nbsp;'}</span></td>
+      <td class="num">${money(x.amount)}<span class="sub-sub">${
+        avg!=null&&hist.length>1?'均 '+money(avg):'&nbsp;'}</span></td>
+      <td>${esc(head(x.account))}<span class="sub-sub">${esc(x.method||'&nbsp;')}</span></td>
+      <td>${billDay(x)}</td>
+      <td>${x.next_draft?x.next_draft.slice(5).replace('-','/'):'—'}
+        <span class="sub-sub${soon?' sub-soon':''}">${days||'&nbsp;'}</span></td></tr>`}).join('')
+   +`</tbody><tfoot><tr class="sub-tf"><td>合计</td>
+      <td class="num">${money(act.reduce((s,x)=>s+Number(x.amount||0),0))}</td>
+      <td colspan="3">每月雷打不动出去的钱</td></tr></tfoot></table>`
+   :`<div class="sc-empty">还没有登记任何订阅</div>`);
+
+  // 分组柱状：一组一个月，一根柱子一个项目。有刻度、有数值、点一下有明细。
+  // 数据少的时候缺的那根就不画，不补零——补零会让「没入账」看起来像「那月没花钱」。
   const C=document.getElementById('subChart');
   const months=[...new Set(SUBPAY.map(p=>p.period.slice(0,7)))].sort();
-  if(months.length<2){C.innerHTML=`<div class="sub-note">攒够两个月才画曲线，现在只有 ${months.length} 个月的数</div>`;return}
-  const W=300,H=90,pad=4,all=SUBPAY.map(p=>Number(p.amount)),mx=Math.max(...all,1);
-  const cols=['#2563eb','#059669','#c2410c','#7c3aed','#be185d'];
-  C.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="sub-svg">`+act.map((x,i)=>{
-    const pts=months.map((m,j)=>{const r=SUBPAY.find(p=>p.sub_id===x.id&&p.period.slice(0,7)===m);
-      return r?[pad+j*(W-2*pad)/Math.max(months.length-1,1),H-pad-(Number(r.amount)/mx)*(H-2*pad)]:null;})
-      .filter(Boolean);
-    if(!pts.length)return '';
-    return `<polyline fill="none" stroke="${cols[i%5]}" stroke-width="2"
-      points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}"/>`
-      +pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.5" fill="${cols[i%5]}"/>`).join('');
-  }).join('')+`</svg><div class="sub-lg">`+act.map((x,i)=>
-    `<span><i style="background:${cols[i%5]}"></i>${esc(x.name)}</span>`).join('')
-   +`</div><div class="sub-note">${months[0]} 到 ${months[months.length-1]}</div>`;
+  if(!months.length){
+    C.innerHTML=`<div class="sub-note">还没有任何一期账单入账，图等第一笔扣款</div>`;return}
+  const series=act.map((x,i)=>({x,i,vals:months.map(m=>{
+      const r=SUBPAY.find(p=>p.sub_id===x.id&&p.period.slice(0,7)===m);
+      return r?Number(r.amount):null;})}))
+    .filter(se=>se.vals.some(v=>v!=null));
+  const raw=Math.max(...SUBPAY.map(p=>Number(p.amount)),1);
+  const nice=v=>{const e=Math.pow(10,Math.floor(Math.log10(v)));const n=v/e;
+    return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*e};
+  const mx=nice(raw);
+  const W=320,H=168,L=38,R=6,T=14,B=32;
+  const plotH=H-T-B,plotW=W-L-R;
+  const yOf=v=>T+plotH-(v/mx)*plotH;
+  const gw=plotW/months.length;
+  const slot=Math.min(36,gw*0.82/series.length),bw=Math.min(24,slot*0.7);
+  const pvC=pvScope('subch');
+  let g='';
+  [0,.5,1].forEach(f=>{const y=yOf(mx*f);
+    g+=`<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"
+        style="stroke:var(--line)"${f?' stroke-dasharray="3 3"':''}/>
+      <text x="${L-6}" y="${(y+3.2).toFixed(1)}" text-anchor="end" font-size="9"
+        style="fill:var(--faint)">${f?Math.round(mx*f):0}</text>`;});
+  g+=`<text x="${L-6}" y="${(T-4).toFixed(1)}" text-anchor="end" font-size="8.5"
+      style="fill:var(--faint)">美元</text>`;
+  months.forEach((m,j)=>{
+    const gx=L+j*gw;
+    g+=`<text x="${(gx+gw/2).toFixed(1)}" y="${H-11}" text-anchor="middle" font-size="9.5"
+        style="fill:var(--muted)">${(+m.slice(5))} 月</text>`;
+    series.forEach((se,k)=>{
+      const v=se.vals[j];if(v==null)return;
+      const cx=gx+gw/2+(k-(series.length-1)/2)*slot;
+      const y=yOf(v),h=Math.max(2,T+plotH-y);
+      let prev=null;for(let q=j-1;q>=0;q--){if(se.vals[q]!=null){prev=se.vals[q];break}}
+      const pid=pvC(pvT(`<span class="pv-dot" style="background:${cols[se.i%5]}"></span>`
+          +esc(se.x.name))
+        +pvRow(m.slice(0,4)+' 年 '+(+m.slice(5))+' 月',money(v))
+        +(prev!=null?pvRow('较上一期',(v-prev>=0?'+':'−')+money(Math.abs(v-prev))):''));
+      g+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}"
+          height="${h.toFixed(1)}" rx="2" data-pv="${pid}"
+          style="fill:${cols[se.i%5]};opacity:.88"></rect>`;
+      if(slot>=20)g+=`<text x="${cx.toFixed(1)}" y="${(y-4).toFixed(1)}" text-anchor="middle"
+          font-size="8.5" style="fill:var(--muted)">${Math.round(v)}</text>`;
+    });
+  });
+  const miss=act.filter(x=>!series.some(se=>se.x===x)).map(x=>head(x.name));
+  C.innerHTML=`<div class="sub-cap">每期账单金额</div>`
+    +`<svg viewBox="0 0 ${W} ${H}" class="sub-svg">${g}</svg>`
+    +`<div class="sub-lg">`+series.map(se=>
+      `<span><i style="background:${cols[se.i%5]}"></i>${esc(head(se.x.name))}</span>`).join('')
+    +`</div><div class="sub-note">柱顶数字是当期账单金额，指上去看明细。${
+      miss.length?miss.join('、')+' 还没有历史账单入账，先不画。':''}</div>`;
 }
 let PI=null,piLoaded=false,_piTimer=null;
 let DOORS={}, PFLAG=null, PEV=[], TRS=[];
