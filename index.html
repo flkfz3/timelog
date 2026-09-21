@@ -651,6 +651,13 @@
   .jn-i{padding:6px 0;border-top:1px solid var(--line);font-size:12.5px;line-height:1.65;color:var(--ink)}
   .jn-i .d{font-size:11px;color:var(--faint);margin-right:6px;font-variant-numeric:tabular-nums}
   .jn-i .aged{color:#c2410c;font-weight:700}
+  .jn-i.jn-done{color:var(--faint)}
+  .jn-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:9px;
+    background:var(--line);color:var(--muted);margin-right:6px;vertical-align:1px}
+  .jn-cnt{font-size:12px;color:var(--muted);padding:2px 0 6px}
+  .jn-cnt b{color:var(--ink);font-size:14px}
+  .jn-fold{margin-top:6px}
+  .jn-fold summary{font-size:11.5px;color:var(--faint);cursor:pointer;padding:6px 0}
   .jn-upd{font-size:11px;color:var(--faint);text-align:center;padding:4px 0 10px}
   .sop-head{display:flex;align-items:baseline;gap:9px;margin-bottom:8px;flex-wrap:wrap}
   .sop-big{font-size:21px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
@@ -1785,7 +1792,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20i';
+const BUILD='2026-09-20j';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5546,9 +5553,17 @@ function renderJn(){
     <span class="lv">${v.tok_mean_7d}</span><span class="lh">单次平均 token，七天`
     + (v.tok_mean_prev!=null?`，上一周 ${v.tok_mean_prev}`:'')+`</span></div>`:'');
   const I=document.getElementById('jnInbox');
-  I.innerHTML=(v.inbox&&v.inbox.length)
-    ? v.inbox.map(x=>`<div class="jn-i"><span class="d${x.days>=14?' aged':''}">${esc(x.date)}`
-      +(x.days>=14?` 挂了 ${x.days} 天`:'')+`</span>${esc(x.text)}</div>`).join('')
+  // 处理完的不再标红也不再混在待办里。她 9/20: 我要看得出还剩几个没处理。
+  const inb=v.inbox||[], pend=inb.filter(x=>!x.done), done=inb.filter(x=>x.done);
+  const row=x=>`<div class="jn-i${x.done?' jn-done':''}">`
+    +`<span class="d${(!x.done&&x.days>=14)?' aged':''}">${esc(x.date)}`
+    +((!x.done&&x.days>=14)?` 挂了 ${x.days} 天`:'')+`</span>`
+    +(x.done?`<span class="jn-tag">已处理</span>`:'')+esc(x.text)+`</div>`;
+  I.innerHTML = inb.length
+    ? `<div class="jn-cnt">待处理 <b>${pend.length}</b> · 已处理 ${done.length}</div>`
+      + pend.map(row).join('')
+      + (done.length?`<details class="jn-fold"><summary>已处理的 ${done.length} 条</summary>`
+         + done.map(row).join('') + `</details>`:'')
     : `<div class="jn-i" style="color:var(--muted)">${esc(t('jn.empty'))}</div>`;
   if(u)u.textContent=t('jn.updated',{d:md(JN.updated_at)});
 }
