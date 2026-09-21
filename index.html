@@ -1842,7 +1842,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-21b';
+const BUILD='2026-09-21c';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -7146,7 +7146,7 @@ function safeRender(fns){
   fns.forEach(f=>{try{f()}catch(e){console.warn('card render failed:',f.name,e)}});
 }
 // ---- 手环三张卡（9/21）。契约 F21：刻度、单位、每个数据元素 data-pv、多序列有图例、空态一句话。
-const HB_COL={deep:'#3b5bdb',light:'#8fb3ff',rem:'#b197fc',awake:'#f1c40f'};
+const HB_COL={deep:'#3b5bdb',light:'#5b8def',rem:'#8c6ee8',awake:'#d4a017'};   // 9/21 审图：浅色段对白底不到 3:1，加深
 function hbFrame(W,H,L,B,ticks,fmt){
   // 基线 + 左侧刻度文字 + 虚线网格；ticks 是 [值, y] 数组
   return ticks.map(([v,y],i)=>`<line x1="${L}" x2="${W-6}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"
