@@ -1825,7 +1825,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20q';
+const BUILD='2026-09-20r';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -4461,7 +4461,8 @@ function cardInvest(A,P){
   let delta='';
   if(P.tot>0&&Math.abs(cur-prev)>=0.05){
     const up=cur>prev;
-    delta=`<span class="sc-delta ${up?'up':'down'}">${up?'↑':'↓'}${fmtHours(Math.abs(cur-prev))}</span>`;
+    // 箭头旁边必须写比较对象（图表契约 F21）：裸的 ↑37.1h 读不出是比谁
+    delta=`<span class="sc-delta ${up?'up':'down'}">${up?'↑':'↓'}${fmtHours(Math.abs(cur-prev))} <small>${LANG==='zh'?'比上期':'vs prev'}</small></span>`;
   }
   // headline = the sum of the printed parts, and the parts come from the
   // period-wide allocation the donut legend uses — so 19.1h never sits on
@@ -6234,7 +6235,7 @@ function renderWeight(){
   if(pts.length>1&&first.date!==latest.date){
     const d=+latest.weight_kg-+first.weight_kg;
     const chip=Math.abs(d)<0.005?'−'
-      :(d<0?'↓':'↑')+Math.abs(d).toFixed(2).replace(/\.?0+$/,'');
+      :(d<0?'↓':'↑')+Math.abs(d).toFixed(2).replace(/\.?0+$/,'')+' kg';
     head=`<div class="wt-cmp">
       <div class="wt-pt"><div class="wt-v">${esc(String(first.weight_kg))}</div>
         <div class="wt-d">${esc((first.date||'').slice(5))}</div></div>
