@@ -611,8 +611,9 @@
   .sub-tb td{padding:7px 7px 7px 0;border-bottom:1px solid var(--line);
     vertical-align:top;line-height:1.3}
   .sub-tb tbody tr:last-child td{border-bottom:none}
+  .sub-tb .num,.sub-tb th.num{text-align:right;padding-right:13px;
+    font-variant-numeric:tabular-nums}
   .sub-tb th:last-child,.sub-tb td:last-child{padding-right:0}
-  .sub-tb .num,.sub-tb th.num{text-align:right;font-variant-numeric:tabular-nums}
   .sub-tb tbody tr[data-pv]{cursor:pointer}
   .sub-tb tbody tr[data-pv]:hover{background:var(--hover,rgba(127,127,127,.07))}
   .sub-sub{display:block;font-size:10px;color:var(--faint);margin-top:1px;
@@ -1824,7 +1825,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-20n';
+const BUILD='2026-09-20q';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5477,19 +5478,21 @@ function renderSubs(){
   const money=v=>Number(v||0).toLocaleString('en-US',
     {minimumFractionDigits:2,maximumFractionDigits:2});
   const billDay=x=>{const m=/(\d+)\s*号/.exec(x.bill_note||'');
-    return m?(/前后|左右/.test(x.bill_note)?'≈ ':'')+m[1]+' 号':'—'};
+    return m?(/前后|左右/.test(x.bill_note)?'≈ ':'')+m[1]+' 号':'未知'};
+  // 账户那一格写「Discover / Card」会被当成折行看，扣款方式一律说中文。
+  const WAY={Debit:'借记卡扣',ACH:'ACH 直扣',Card:'信用卡扣',Zelle:'Zelle'};
+  const way=x=>WAY[x.method]||x.method||'方式未定';
 
   // 每个账户每月固定要出多少。她 9/20 把工资拆成 Chase 90 / BoA 10，
   // 而电和网都从 BoA 扣，这一栏就是为了让那个矛盾自己显出来。
   const out={};act.forEach(x=>{out[x.account]=(out[x.account]||0)+Number(x.amount||0)});
   const A=document.getElementById('subAcct');
-  A.innerHTML=`<div class="sub-cap">账户</div>
-    <table class="sub-tb"><thead><tr><th>账户</th><th>进账</th>
+  A.innerHTML=`<table class="sub-tb"><thead><tr><th>账户</th><th>进账</th>
       <th class="num">每月固定出账</th></tr></thead><tbody>`
     +ACCTS.map(a=>`<tr><td><b>${esc(head(a.name))}</b>
         <span class="sub-sub">${esc(tail(a.name))||'&nbsp;'}</span></td>
-      <td>${esc(a.inflow_note||'—')}</td>
-      <td class="num">${out[a.name]?money(out[a.name]):'—'}</td></tr>`).join('')
+      <td>${esc(a.inflow_note||'没写')}</td>
+      <td class="num">${out[a.name]?money(out[a.name]):'无'}</td></tr>`).join('')
     +`</tbody></table>`;
 
   const today=new Date();today.setHours(0,0,0,0);
@@ -5510,7 +5513,7 @@ function renderSubs(){
         +esc(x.name))
       +pvRow('月额',money(x.amount))
       +pvRow('扣款账户',esc(x.account))
-      +pvRow('扣款方式',esc(x.method||'—'))
+      +pvRow('扣款方式',esc(way(x)))
       +(avg!=null?pvRow('近 '+hist.length+' 期均值',money(avg)):'')
       +(x.next_draft?pvRow('下次扣款',x.next_draft+(days?'（'+days+'）':'')):'')
       +pvLine('出账：'+esc(x.bill_note||'未知'))
@@ -5520,9 +5523,9 @@ function renderSubs(){
         <span class="sub-sub">${esc(tail(x.name))||'&nbsp;'}</span></td>
       <td class="num">${money(x.amount)}<span class="sub-sub">${
         avg!=null&&hist.length>1?'均 '+money(avg):'&nbsp;'}</span></td>
-      <td>${esc(head(x.account))}<span class="sub-sub">${esc(x.method||'&nbsp;')}</span></td>
+      <td>${esc(head(x.account))}<span class="sub-sub">${esc(way(x))}</span></td>
       <td>${billDay(x)}</td>
-      <td>${x.next_draft?x.next_draft.slice(5).replace('-','/'):'—'}
+      <td>${x.next_draft?x.next_draft.slice(5).replace('-','/'):'未定'}
         <span class="sub-sub${soon?' sub-soon':''}">${days||'&nbsp;'}</span></td></tr>`}).join('')
    +`</tbody><tfoot><tr class="sub-tf"><td>合计</td>
       <td class="num">${money(act.reduce((s,x)=>s+Number(x.amount||0),0))}</td>
@@ -5550,20 +5553,22 @@ function renderSubs(){
   const slot=Math.min(36,gw*0.82/series.length),bw=Math.min(24,slot*0.7);
   const pvC=pvScope('subch');
   let g='';
+  // 刻度自己带 $，就不用再在角上写单位；那两个字原来正好压在最高一格上。
   [0,.5,1].forEach(f=>{const y=yOf(mx*f);
     g+=`<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"
-        style="stroke:var(--line)"${f?' stroke-dasharray="3 3"':''}/>
+        style="stroke:var(--muted);opacity:${f?.45:.8}"${f?' stroke-dasharray="3 3"':''}/>
       <text x="${L-6}" y="${(y+3.2).toFixed(1)}" text-anchor="end" font-size="9"
-        style="fill:var(--faint)">${f?Math.round(mx*f):0}</text>`;});
-  g+=`<text x="${L-6}" y="${(T-4).toFixed(1)}" text-anchor="end" font-size="8.5"
-      style="fill:var(--faint)">美元</text>`;
+        style="fill:var(--faint)">$${Math.round(mx*f)}</text>`;});
   months.forEach((m,j)=>{
     const gx=L+j*gw;
     g+=`<text x="${(gx+gw/2).toFixed(1)}" y="${H-11}" text-anchor="middle" font-size="9.5"
         style="fill:var(--muted)">${(+m.slice(5))} 月</text>`;
-    series.forEach((se,k)=>{
-      const v=se.vals[j];if(v==null)return;
-      const cx=gx+gw/2+(k-(series.length-1)/2)*slot;
+    // 本月真有账单的才占位：8 月只有电费，那根柱子要落在「8 月」正下方，
+    // 停在三色道里属于自己那一道会歪出去一根柱子宽。
+    const here=series.filter(se=>se.vals[j]!=null);
+    here.forEach((se,k)=>{
+      const v=se.vals[j];
+      const cx=gx+gw/2+(k-(here.length-1)/2)*slot;
       const y=yOf(v),h=Math.max(2,T+plotH-y);
       let prev=null;for(let q=j-1;q>=0;q--){if(se.vals[q]!=null){prev=se.vals[q];break}}
       const pid=pvC(pvT(`<span class="pv-dot" style="background:${cols[se.i%5]}"></span>`
@@ -5583,7 +5588,7 @@ function renderSubs(){
     +`<div class="sub-lg">`+series.map(se=>
       `<span><i style="background:${cols[se.i%5]}"></i>${esc(head(se.x.name))}</span>`).join('')
     +`</div><div class="sub-note">柱顶数字是当期账单金额，指上去看明细。${
-      miss.length?miss.join('、')+' 还没有历史账单入账，先不画。':''}</div>`;
+      miss.length?miss.join('、')+'还没有历史账单入账，先不画。':''}</div>`;
 }
 let PI=null,piLoaded=false,_piTimer=null;
 let DOORS={}, PFLAG=null, PEV=[], TRS=[];
