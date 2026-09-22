@@ -1883,7 +1883,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-22g';
+const BUILD='2026-09-22h';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5547,6 +5547,10 @@ function renderSubs(){
   const box=document.getElementById('subList'); if(!box)return;
   const act=SUBS.filter(x=>x.active!==false);
   const cols=['#2563eb','#059669','#c2410c','#7c3aed','#be185d'];
+  // 房租水电网是跟室友平摊的：账户里走的是全额（她先垫，室友事后转给她），
+  // 她真正承担的是全额 ÷ 人数。所以每个账户那一行保持全额，只有总和那里说一句实际承担。
+  const sp=x=>Math.max(1,Number(x.split||1));
+  const mine=x=>Number(x.amount||0)/sp(x);
   // 名字都是「中文标签 + 供应商」，表格窄，把标签放主行、供应商放副行，
   // 这样五列在 390 的手机上也不用横向滚动。
   const head=n=>String(n||'').split(/\s+/)[0];
@@ -5558,9 +5562,6 @@ function renderSubs(){
   // 账户那一格写「Discover / Card」会被当成折行看，扣款方式一律说中文。
   const WAY={Debit:'借记卡扣',ACH:'ACH 直扣',Card:'信用卡扣',Zelle:'Zelle'};
   const way=x=>WAY[x.method]||x.method||'方式未定';
-  // 房租水电网是跟室友平摊的：账户里走的是全额，她真正要付的是全额 ÷ 人数。
-  const sp=x=>Math.max(1,Number(x.split||1));
-  const mine=x=>Number(x.amount||0)/sp(x);
 
   // 每个账户每月固定要出多少。她 9/20 把工资拆成 Chase 90 / BoA 10，
   // 而电和网都从 BoA 扣，这一栏就是为了让那个矛盾自己显出来。
@@ -5572,7 +5573,9 @@ function renderSubs(){
         <span class="sub-sub">${esc(tail(a.name))||'&nbsp;'}</span></td>
       <td>${esc(a.inflow_note||'没写')}</td>
       <td class="num">${out[a.name]?money(out[a.name]):'无'}</td></tr>`).join('')
-    +`</tbody></table>`;
+    +`</tbody><tfoot><tr class="sub-tf"><td>合计</td><td>室友那半事后转给我</td>
+      <td class="num">${money(act.reduce((s,x)=>s+Number(x.amount||0),0))}
+        <span class="sub-sub">我实际承担 ${money(act.reduce((s,x)=>s+mine(x),0))}</span></td></tr></tfoot></table>`;
 
   const today=new Date();today.setHours(0,0,0,0);
   const pvReg=pvScope('sub');
