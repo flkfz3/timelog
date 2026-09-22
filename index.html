@@ -657,6 +657,9 @@
   .zs-bar .zs-val{position:absolute;top:0;bottom:0;left:0;border-radius:5px}
   .zs-ref-t{font-size:10.5px;color:var(--faint);margin-top:3px}
   .zs-rings{display:flex;align-items:center;gap:14px}
+  #zsHypBox,#zsStepsDayBox,#zsCalDayBox{position:relative}
+  .zs-tip{position:absolute;top:0;left:0;pointer-events:none;opacity:0;transition:opacity .1s;background:var(--ink);color:var(--bg,#fff);font-size:11px;padding:3px 7px;border-radius:6px;white-space:nowrap;z-index:5}
+  .zs-tip b{font-weight:700;margin-right:4px}
   .zs-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
   @media (max-width:480px){.zs-big{font-size:19px}.zs-rings{gap:8px}.zs-rings svg{width:112px;height:112px;flex:none}.zs-rings .zs-tiles{grid-template-columns:1fr;gap:6px;padding:8px;margin-top:0}}
   .sub-lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
@@ -1880,7 +1883,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-22d';
+const BUILD='2026-09-22e';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -7284,6 +7287,24 @@ function zsRing(v,max,col,size,label){
       stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/>
     <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-size="${size/3.2}" font-weight="800" style="fill:var(--ink)">${label}</text></svg>`;
 }
+
+function zsScrub(boxId,resolve){
+  // resolve(fx) : fx 是 0..1 的横向位置，返回 {label,value} 或 null
+  const box=document.getElementById(boxId);if(!box)return;const svg=box.querySelector('svg[data-chart-type]');if(!svg)return;
+  let tip=box.querySelector('.zs-tip');if(!tip){tip=document.createElement('div');tip.className='zs-tip';box.appendChild(tip);}
+  let cur=svg.querySelector('.zs-cursor');const vb=svg.viewBox.baseVal;
+  if(!cur){cur=document.createElementNS('http://www.w3.org/2000/svg','line');cur.setAttribute('class','zs-cursor');cur.setAttribute('y1',0);cur.setAttribute('y2',vb.height);cur.style.cssText='stroke:var(--ink);stroke-width:1;opacity:0;pointer-events:none';svg.appendChild(cur);}
+  const L=Number(svg.dataset.l||0),R=Number(svg.dataset.r||0);
+  const move=e=>{const pt=e.touches?e.touches[0]:e;const rc=svg.getBoundingClientRect();const px=(pt.clientX-rc.left)/rc.width*vb.width;
+    const fx=(px-L)/(vb.width-L-R);if(fx<0||fx>1){tip.style.opacity=0;cur.style.opacity=0;return}
+    const r=resolve(fx);if(!r){tip.style.opacity=0;cur.style.opacity=0;return}
+    cur.setAttribute('x1',px);cur.setAttribute('x2',px);cur.style.opacity=.6;
+    tip.innerHTML=`<b>${r.label}</b> ${r.value}`;tip.style.opacity=1;
+    const bx=box.getBoundingClientRect();let left=pt.clientX-bx.left;tip.style.left=Math.max(4,Math.min(bx.width-tip.offsetWidth-4,left-tip.offsetWidth/2))+'px';tip.style.top=(rc.top-bx.top-30)+'px';
+    if(e.cancelable&&e.touches)e.preventDefault();};
+  const off=()=>{tip.style.opacity=0;cur.style.opacity=0};
+  svg.onpointermove=move;svg.onpointerleave=off;svg.ontouchmove=move;svg.ontouchend=off;svg.style.touchAction='pan-y';
+}
 function zsNightStages(night){return STAGES.filter(s=>s.night===night).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at))}
 function zsTag(kind){return kind?`<span class="zs-tag ${kind==='low'?'lo':'hi'}">${kind==='low'?zsT(0,'偏低','low'):zsT(0,'偏高','high')}</span>`:''}
 function zsRange(v,lo,hi){return v<lo?'low':v>hi?'high':''}
@@ -7327,7 +7348,8 @@ function renderZsHyp(){
   svg+=`<text x="${L}" y="${H-2}" font-size="9" style="fill:var(--muted)">${zsClock(t0)} ${zsT(0,'入睡','asleep')}</text><text x="${W-R}" y="${H-2}" font-size="9" text-anchor="end" style="fill:var(--muted)">${zsClock(t1)} ${zsT(0,'醒来','wake')}</text>`;
   fillCard('zsHypBox',`<div class="zs-sec">${zsT(0,'全天睡眠','Sleep stages')}</div>
     <div class="sub-lg">${['deep','light','rem','awake'].map(k=>`<span><i style="background:${ZS_COL[k]}"></i>${esc(t('hb.'+k))}</span>`).join('')}</div>
-    <svg viewBox="0 0 ${W} ${H}" data-chart-type="hypnogram" style="width:100%;height:auto;display:block">${svg}</svg>`);
+    <svg viewBox="0 0 ${W} ${H}" data-chart-type="hypnogram" data-l="${L}" data-r="${R}" style="width:100%;height:auto;display:block">${svg}</svg>`);
+  zsScrub('zsHypBox',fx=>{const ms=t0+fx*(t1-t0);const sg=segs.find(s=>new Date(s.start_at).getTime()<=ms&&new Date(s.end_at).getTime()>=ms);return {label:zsClock(ms),value:sg?esc(t('hb.'+sg.stage.toLowerCase()))+' · '+zsClock(sg.start_at)+'→'+zsClock(sg.end_at):zsT(0,'清醒','awake')}});
 }
 function renderZsStruct(){
   const last=SLEEPN[SLEEPN.length-1];if(!last){fillCard('zsStructBox','');return}
@@ -7386,7 +7408,8 @@ function zsHourBars(boxId,title,vals,col,unit,note){
   vals.forEach((v,h)=>{if(!v)return;const pid=pvReg(pvT(String(h).padStart(2,'0')+':00–'+String(h+1).padStart(2,'0')+':00')+pvRow(unit,String(v)));svg+=`<rect x="${(L+h*bw+1).toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${Math.max(3,y(0)-y(v)).toFixed(1)}" rx="1.5" data-pv="${pid}" style="fill:${col}"></rect>`});
   [0,6,12,18,24].forEach(h=>{svg+=`<text x="${(L+h*bw).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="${h===24?'end':h?'middle':'start'}" style="fill:var(--faint)">${String(h).padStart(2,'0')}:00</text>`});
   const tot=vals.reduce((a,b)=>a+(b||0),0);
-  fillCard(boxId,`<div class="zs-sec">${title}</div><div class="zs-big">${tot}<span class="zs-unit">${unit}</span></div><div class="zs-lab">${note}</div><svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" style="width:100%;height:auto;display:block">${svg}</svg>`);
+  fillCard(boxId,`<div class="zs-sec">${title}</div><div class="zs-big">${tot}<span class="zs-unit">${unit}</span></div><div class="zs-lab">${note}</div><svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" data-l="${L}" data-r="${R}" style="width:100%;height:auto;display:block">${svg}</svg>`);
+  zsScrub(boxId,fx=>{const h=Math.min(23,Math.floor(fx*24));return {label:String(h).padStart(2,'0')+':00–'+String(h+1).padStart(2,'0')+':00',value:(vals[h]||0)+' '+unit}});
 }
 function renderZsStepsDay(){
   const day=vTodayISO(),rows=BHOURS.filter(r=>r.day===day);if(!rows.length){fillCard('zsStepsDayBox','');fillCard('zsCalDayBox','');return}
@@ -7403,8 +7426,10 @@ function renderZsWeek(){
   const bars=(vals,col,unit)=>{const W=320,H=110,L=34,R=8,T=12,B=18,mx=Math.max(10,...vals.map(v=>v||0)),y=v=>T+(1-v/mx)*(H-T-B),bw=(W-L-R)/7;const pvReg=pvScope('zswk'+unit);let svg=hbFrame(W,H,L,B,[[0,y(0)],[mx/2,y(mx/2)],[mx,y(mx)]],v=>String(Math.round(v)));
     vals.forEach((v,i)=>{const d=days[i];svg+=`<text x="${(L+i*bw+bw/2).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="middle" style="fill:var(--faint)">${md(d).slice(3)}</text>`;if(v==null)return;const pid=pvReg(pvT(esc(md(d)))+pvRow(unit,String(v)));svg+=`<rect x="${(L+i*bw+bw*0.25).toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw*0.5).toFixed(1)}" height="${Math.max(2,y(0)-y(v)).toFixed(1)}" rx="3" data-pv="${pid}" style="fill:${col}"></rect>`});
     const vs=vals.filter(v=>v!=null),tot=vs.reduce((a,b)=>a+b,0);
-    return `<div class="zs-sec" style="font-size:12.5px"><i class="zs-dot" style="background:${col}"></i>${unit}</div><svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" style="width:100%;height:auto;display:block">${svg}</svg><div class="zs-tiles two"><div class="zs-tile"><div class="zs-big">${tot}</div><div class="zs-lab">${zsT(0,'总计','total')} ${unit}</div></div><div class="zs-tile"><div class="zs-big">${Math.round(tot/vs.length)}</div><div class="zs-lab">${zsT(0,'日均','daily avg')} ${unit}</div></div></div>`};
+    return `<div class="zs-sec" style="font-size:12.5px"><i class="zs-dot" style="background:${col}"></i>${unit}</div><svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" data-l="${L}" data-r="${R}" data-unit="${unit}" style="width:100%;height:auto;display:block">${svg}</svg><div class="zs-tiles two"><div class="zs-tile"><div class="zs-big">${tot}</div><div class="zs-lab">${zsT(0,'总计','total')} ${unit}</div></div><div class="zs-tile"><div class="zs-big">${Math.round(tot/vs.length)}</div><div class="zs-lab">${zsT(0,'日均','daily avg')} ${unit}</div></div></div>`};
   fillCard('zsWeekBox',`<div class="zs-sec">${zsT(0,'本周概览','This week')}</div>${bars(st,ZS_COL.steps,zsT(0,'步','steps'))}${bars(cl,ZS_COL.cal,zsT(0,'千卡','kcal'))}`);
+  document.querySelectorAll('#zsWeekBox svg[data-chart-type]').forEach((sv,k)=>{const vals=k?cl:st;const wrap=document.createElement('div');wrap.style.position='relative';sv.parentNode.insertBefore(wrap,sv);wrap.appendChild(sv);wrap.id='zsWeekSvg'+k;
+    zsScrub('zsWeekSvg'+k,fx=>{const i=Math.min(6,Math.floor(fx*7));return {label:md(days[i]),value:(vals[i]==null?'—':vals[i])+' '+sv.dataset.unit}})});
 }
 function renderZsHr(){
   const day=vTodayISO();const lo=zsMetric(day,'band_rhr'),hi=zsMetric(day,'band_hr_max'),rhr=zsMetric(day,'rhr');
