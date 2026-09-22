@@ -629,6 +629,36 @@
   .sub-tf td{border-top:1px solid var(--line);border-bottom:none;padding-top:8px;
     font-size:11.5px;font-weight:600;color:var(--muted)}
   .sub-svg{width:100%;height:auto;display:block;margin-top:10px;overflow:visible}
+  /* 手环页（照 Zepp Life 复刻） */
+  .zs-det{margin-top:10px;border-top:1px solid var(--line);padding-top:6px}
+  .zs-det>summary{cursor:pointer;font-size:12.5px;color:var(--accent-ink);list-style:none;display:flex;align-items:center;gap:6px;padding:4px 0}
+  .zs-det>summary::-webkit-details-marker{display:none}
+  .zs-det>summary::after{content:'›';font-size:16px;transition:transform .15s}
+  .zs-det[open]>summary::after{transform:rotate(90deg)}
+  .zs-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .zs-h1{font-size:18px;font-weight:800;color:var(--ink)}
+  .zs-sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .zs-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 8px;margin-top:12px;background:var(--bg-soft,transparent);border-radius:10px}
+  .zs-tiles.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .zs-tile{min-width:0}
+  .zs-big{font-size:22px;font-weight:800;color:var(--ink);line-height:1.15;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px}
+  .zs-unit{font-size:11px;font-weight:600;color:var(--muted)}
+  .zs-lab{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .zs-goal{font-size:11px;color:var(--faint)}
+  .zs-tag{font-size:10px;font-weight:700;padding:1px 5px;border-radius:5px;margin-left:4px;vertical-align:middle}
+  .zs-tag.lo{color:#c2410c;background:rgba(255,122,26,.15)}
+  .zs-tag.hi{color:#b91c1c;background:rgba(239,68,68,.15)}
+  .zs-sec{font-size:13px;font-weight:700;color:var(--ink);margin:14px 0 6px}
+  .zs-row{margin:10px 0}
+  .zs-rowh{font-size:12.5px;color:var(--ink);display:flex;align-items:center;gap:4px}
+  .zs-right{margin-left:auto;font-weight:700}
+  .zs-bar{position:relative;height:10px;border-radius:5px;background:var(--line);margin-top:6px;overflow:hidden}
+  .zs-bar .zs-ref{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,rgba(0,0,0,.14) 0 3px,transparent 3px 6px)}
+  .zs-bar .zs-val{position:absolute;top:0;bottom:0;left:0;border-radius:5px}
+  .zs-ref-t{font-size:10.5px;color:var(--faint);margin-top:3px}
+  .zs-rings{display:flex;align-items:center;gap:14px}
+  .zs-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+  @media (max-width:480px){.zs-big{font-size:19px}.zs-rings{flex-direction:column;align-items:stretch}.zs-rings svg{margin:0 auto}}
   .sub-lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
   .sub-lg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
   .sub-note{font-size:11px;color:var(--faint);margin-top:6px}
@@ -1590,7 +1620,11 @@
     <div class="card"><div class="sc-title" data-i18n="h.night"></div>
       <div id="nightChartBox"></div></div>
     <div class="card"><div class="sc-title" data-i18n="hb.sleep"></div>
-      <div id="hbSleepBox"></div></div>
+      <div id="zsSleepBox"></div>
+      <details class="zs-det"><summary data-i18n="zs.more"></summary>
+        <div id="zsHypBox"></div><div id="zsStructBox"></div>
+        <div class="zs-sec" data-i18n="zs.14n"></div><div id="hbSleepBox"></div>
+        <div id="zsRegBox"></div><div id="zsVitalBox"></div></details></div>
     <div class="card"><div class="sc-title" data-i18n="sl.reg"></div>
       <div id="slRegBox"></div></div>
     <div class="stat-grid" style="margin-bottom:18px">
@@ -1656,8 +1690,12 @@
       <div class="card"><div class="sc-title" data-i18n="cmp.title"></div><div id="cmpExBox"></div></div>
     </div>
     <div class="stat-grid" style="margin-bottom:18px">
-      <div class="card"><div class="sc-title" data-i18n="hb.steps"></div><div id="hbStepsBox"></div></div>
-      <div class="card"><div class="sc-title" data-i18n="hb.hr"></div><div id="hbHrBox"></div></div>
+      <div class="card"><div class="sc-title" data-i18n="zs.today"></div><div id="zsRingsBox"></div>
+        <details class="zs-det"><summary data-i18n="zs.more"></summary>
+          <div id="zsStepsDayBox"></div><div id="zsCalDayBox"></div><div id="zsWeekBox"></div>
+          <div class="zs-sec" data-i18n="hb.steps"></div><div id="hbStepsBox"></div></details></div>
+      <div class="card"><div class="sc-title" data-i18n="hb.hr"></div><div id="zsHrBox"></div>
+        <details class="zs-det"><summary data-i18n="zs.more"></summary><div id="hbHrBox"></div></details></div>
     </div>
     <div class="h-sec" id="bodySec"><span data-i18n="ex.body"></span></div>
     <div class="card"><div class="sc-title" data-i18n="h.weight"></div>
@@ -1842,7 +1880,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-22a';
+const BUILD='2026-09-22b';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -1976,7 +2014,7 @@ const I18N={
   'h.weight':'Weight','h.eat':'Eating window','h.eat.avg':'avg {h}',
   'hb.sleep':'Band sleep · last 14 nights','hb.steps':'Daily steps · 14 days','hb.hr':'Resting heart rate · 14 days',
   'hb.none':'No band data yet. The Health Sync shortcut runs at 08:00; the first night shows up the morning after.',
-  'hb.deep':'Deep','hb.light':'Light','hb.rem':'REM','hb.awake':'Awake','hb.avg':'avg','hb.score':'睡眠评分','hb.srhr':'睡眠静息心率',
+  'hb.deep':'Deep','hb.light':'Light','hb.rem':'REM','hb.awake':'Awake','hb.avg':'avg','hb.score':'睡眠评分','zs.more':'详情','zs.today':'今日活动','zs.14n':'最近 14 晚','hb.srhr':'睡眠静息心率',
   'h.kcal':'Rough calories','h.kcal.note':'rough estimate — trend only',
   'health.diet':'Diet · last 14 days',
   'health.energy':'Energy · last 30 days',
@@ -2170,7 +2208,7 @@ const I18N={
   'h.weight':'体重趋势','h.eat':'进食窗口','h.eat.avg':'平均 {h}',
   'hb.sleep':'手环睡眠 · 近 14 晚','hb.steps':'每日步数 · 近 14 天','hb.hr':'静息心率 · 近 14 天',
   'hb.none':'还没有手环数据。Health Sync 每天 08:00 跑一次，第一晚的数据第二天早上出现。',
-  'hb.deep':'深睡','hb.light':'浅睡','hb.rem':'快速眼动','hb.awake':'醒着','hb.avg':'均','hb.score':'sleep score','hb.srhr':'sleep resting HR',
+  'hb.deep':'深睡','hb.light':'浅睡','hb.rem':'快速眼动','hb.awake':'醒着','hb.avg':'均','hb.score':'sleep score','zs.more':'Details','zs.today':'Today','zs.14n':'Last 14 nights','hb.srhr':'sleep resting HR',
   'h.kcal':'热量粗估','h.kcal.note':'粗估仅供趋势参考',
   'health.diet':'饮食 · 近14天',
   'health.energy':'精力 · 近30天',
@@ -5958,10 +5996,13 @@ async function pullHealth(){
     const b=await sb.from('body_log').select('*')
       .gte('date',isoDaysBack(62)[0]).order('date',{ascending:true});
     BODY=(b&&!b.error&&b.data)||[];
-    const [sn,hl]=await Promise.all([
+    const [sn,hl,sg,bh]=await Promise.all([
       sb.from('sleep_nights').select('*').gte('night',isoDaysBack(62)[0]).order('night',{ascending:true}),
-      sb.from('health_log').select('date,metric,value,unit').gte('date',isoDaysBack(62)[0]).order('date',{ascending:true})]);
+      sb.from('health_log').select('date,metric,value,unit').gte('date',isoDaysBack(62)[0]).order('date',{ascending:true}),
+      sb.from('sleep_stages').select('night,start_at,end_at,stage').gte('night',isoDaysBack(14)[0]).order('start_at',{ascending:true}).limit(1000),
+      sb.from('band_hours').select('day,hour,steps,active_min,worn_min').gte('day',isoDaysBack(8)[0]).order('day',{ascending:true}).limit(300)]);
     SLEEPN=(sn&&!sn.error&&sn.data)||[];HLOG=(hl&&!hl.error&&hl.data)||[];
+    STAGES=(sg&&!sg.error&&sg.data)||[];BHOURS=(bh&&!bh.error&&bh.data)||[];
     pullCycles();
     if(['sleep','diet','sport'].includes(_tab))renderActive();
   }catch(_){BODY=[];}
@@ -7228,10 +7269,148 @@ function renderHbBars(boxId,metric,unit,fmt){
 }
 function renderHbSteps(){renderHbBars('hbStepsBox','steps','步',v=>v>=1000?(v/1000).toFixed(v%1000?1:0)+'k':String(v))}
 function renderHbHr(){renderHbBars('hbHrBox','rhr','bpm',v=>String(v))}
+// ---- 手环页（照 Zepp Life 的睡眠/运动/心率页复刻，她 9/22 定）----------------
+// 数据：SLEEPN(sleep_nights) STAGES(sleep_stages) BHOURS(band_hours) HLOG(health_log band_*)
+let STAGES=[],BHOURS=[];
+const ZS_COL={deep:'#1d2fb5',light:'#3b82f6',rem:'#4fc3f7',awake:'#ff7a1a',cal:'#ff6a13',steps:'#7ed321',active:'#3d9be9'};
+const zsT=(k,z,e)=>LANG==='zh'?z:e;
+function zsHm(m){m=Math.round(m||0);return LANG==='zh'?`${Math.floor(m/60)} 小时 ${m%60} 分钟`:`${Math.floor(m/60)}h ${m%60}m`}
+function zsClock(x){return new Date(x).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})}
+function zsRing(v,max,col,size,label){
+  const r=size/2-6,c=2*Math.PI*r,p=Math.max(0,Math.min(1,(v||0)/max));
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" data-chart-type="ring" style="display:block">
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--line)" stroke-width="7"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round"
+      stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/>
+    <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-size="${size/3.2}" font-weight="800" style="fill:var(--ink)">${label}</text></svg>`;
+}
+function zsNightStages(night){return STAGES.filter(s=>s.night===night).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at))}
+function zsTag(kind){return kind?`<span class="zs-tag ${kind==='low'?'lo':'hi'}">${kind==='low'?zsT(0,'偏低','low'):zsT(0,'偏高','high')}</span>`:''}
+function zsRange(v,lo,hi){return v<lo?'low':v>hi?'high':''}
+function renderZsSleep(){
+  const last=SLEEPN[SLEEPN.length-1];
+  if(!last){fillCard('zsSleepBox',`<div class="sc-empty">${esc(t('hb.none'))}</div>`);return}
+  const asleep=last.asleep_min||0,inbed=Math.max(1,Math.round((new Date(last.end_at)-new Date(last.start_at))/60000));
+  const segs=zsNightStages(last.night),awakeN=segs.filter(s=>s.stage==='Awake').length||(last.awake_min?1:0);
+  const deepPct=asleep?Math.round(100*(last.deep_min||0)/asleep):0,eff=Math.round(100*asleep/inbed);
+  const score=last.score||0,q=score>=80?zsT(0,'睡眠质量优','Good sleep'):score>=60?zsT(0,'睡眠质量良好','Fair sleep'):zsT(0,'睡眠质量有待提高','Sleep needs work');
+  const tile=(big,unit,lab,tag)=>`<div class="zs-tile"><div class="zs-big">${big}<span class="zs-unit">${unit}</span>${tag||''}</div><div class="zs-lab">${lab}</div></div>`;
+  const durTag=asleep<420?zsTag('low'):'';
+  fillCard('zsSleepBox',`<div class="zs-head"><div><div class="zs-h1">${q}</div><div class="zs-sub">${esc(md(last.night))} · ${zsClock(last.start_at)} → ${zsClock(last.end_at)}</div></div>${score?zsRing(score,100,'#2f6bff',72,score):''}</div>
+    <div class="zs-tiles">
+      ${tile(Math.floor(asleep/60),zsT(0,' 小时 ','h ')+(asleep%60)+zsT(0,' 分钟',' m'),zsT(0,'睡眠总时长','Total sleep'),durTag)}
+      ${tile(zsClock(last.start_at),'',zsT(0,'入睡时间','Bedtime'))}
+      ${tile(deepPct,'%',zsT(0,'深睡占比','Deep %'),zsTag(zsRange(deepPct,20,40)))}
+      ${tile(awakeN,zsT(0,' 次',''),zsT(0,'清醒次数','Wake-ups'),zsTag(awakeN>2?'high':''))}
+      ${tile(eff,'%',zsT(0,'睡眠效率','Efficiency'),zsTag(eff<85?'low':''))}
+    </div>`);
+}
+function renderZsHyp(){
+  const last=SLEEPN[SLEEPN.length-1];const segs=last?zsNightStages(last.night):[];
+  if(!segs.length){fillCard('zsHypBox','');return}
+  const t0=new Date(segs[0].start_at).getTime(),t1=Math.max(...segs.map(s=>new Date(s.end_at).getTime()));
+  const W=320,H=130,L=8,R=8,T=10,rowH=22,lv={Awake:0,REM:1,Light:2,Deep:3};
+  const x=ms=>L+(ms-t0)/(t1-t0)*(W-L-R);
+  const pvReg=pvScope('zshyp');let svg='';
+  ['Awake','REM','Light','Deep'].forEach((k,i)=>{svg+=`<line x1="${L}" x2="${W-R}" y1="${T+i*rowH+rowH/2}" y2="${T+i*rowH+rowH/2}" style="stroke:var(--line)" stroke-dasharray="3 3"/>`});
+  segs.forEach(s=>{
+    const a=new Date(s.start_at).getTime(),b=new Date(s.end_at).getTime(),i=lv[s.stage]??2,col=ZS_COL[s.stage.toLowerCase()]||ZS_COL.light;
+    const pid=pvReg(pvT(esc(t('hb.'+s.stage.toLowerCase()))+' · '+Math.round((b-a)/60000)+zsT(0,' 分钟',' min'))+pvRow(zsClock(a)+' → '+zsClock(b),''));
+    svg+=`<rect x="${x(a).toFixed(1)}" y="${T+i*rowH+4}" width="${Math.max(1.5,x(b)-x(a)).toFixed(1)}" height="${rowH-8}" rx="3" data-pv="${pid}" style="fill:${col}"></rect>`;
+  });
+  svg+=`<text x="${L}" y="${H-4}" font-size="9" style="fill:var(--muted)">${zsClock(t0)} ${zsT(0,'入睡','asleep')}</text><text x="${W-R}" y="${H-4}" font-size="9" text-anchor="end" style="fill:var(--muted)">${zsClock(t1)} ${zsT(0,'醒来','wake')}</text>`;
+  fillCard('zsHypBox',`<div class="zs-sec">${zsT(0,'全天睡眠','Sleep stages')}</div>
+    <div class="sub-lg">${['deep','light','rem','awake'].map(k=>`<span><i style="background:${ZS_COL[k]}"></i>${esc(t('hb.'+k))}</span>`).join('')}</div>
+    <svg viewBox="0 0 ${W} ${H}" data-chart-type="hypnogram" style="width:100%;height:auto;display:block">${svg}</svg>`);
+}
+function renderZsStruct(){
+  const last=SLEEPN[SLEEPN.length-1];if(!last){fillCard('zsStructBox','');return}
+  const asleep=last.asleep_min||0;if(!asleep){fillCard('zsStructBox','');return}
+  const segs=zsNightStages(last.night),awakeN=segs.filter(s=>s.stage==='Awake').length;
+  const row=(lab,valTxt,pct,lo,hi,col,right,tag)=>`<div class="zs-row"><div class="zs-rowh"><b>${lab}</b> ${valTxt}${tag}<span class="zs-right">${right}</span></div>
+    <div class="zs-bar"><i class="zs-ref" style="left:${lo}%;width:${hi-lo}%"></i><i class="zs-val" style="width:${Math.min(100,pct)}%;background:${col}"></i></div><div class="zs-ref-t">${zsT(0,'参考','ref')}: ${lo}${typeof lo==='number'&&hi<=100&&lab!==zsT(0,'清醒','Awake')?'%':''}-${hi}${hi<=100&&lab!==zsT(0,'清醒','Awake')?'%':''}</div></div>`;
+  const p=k=>Math.round(100*(last[k]||0)/asleep);
+  fillCard('zsStructBox',`<div class="zs-sec">${zsT(0,'睡眠结构','Sleep structure')}</div>
+    ${row(zsT(0,'清醒','Awake'),awakeN+zsT(0,' 次',''),Math.min(100,awakeN*20),0,40,ZS_COL.awake,(last.awake_min||0)+zsT(0,' 分钟',' min'),zsTag(awakeN>2?'high':'')).replace('参考: 0%-40%','参考: 0-2 次').replace('ref: 0%-40%','ref: 0-2')}
+    ${row(zsT(0,'快速眼动','REM'),p('rem_min')+'%',p('rem_min'),10,30,ZS_COL.rem,(last.rem_min||0)+zsT(0,' 分钟',' min'),zsTag(zsRange(p('rem_min'),10,30)))}
+    ${row(zsT(0,'浅睡','Light'),p('light_min')+'%',p('light_min'),20,60,ZS_COL.light,zsHm(last.light_min),zsTag(zsRange(p('light_min'),20,60)))}
+    ${row(zsT(0,'深睡','Deep'),p('deep_min')+'%',p('deep_min'),20,40,ZS_COL.deep,(last.deep_min||0)+zsT(0,' 分钟',' min'),zsTag(zsRange(p('deep_min'),20,40)))}`);
+}
+function renderZsReg(){
+  const rows=SLEEPN.slice(-7);if(rows.length<1){fillCard('zsRegBox','');return}
+  const mins=x=>{const d=new Date(x);return d.getHours()*60+d.getMinutes()};
+  const wrap=m=>(m-12*60+1440)%1440;  // 以中午为 0，晚上和凌晨连续
+  const fmt=m=>{m=((m+12*60)%1440+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
+  const chart=(key,title,lab)=>{
+    const pts=rows.map(r=>[r.night,wrap(mins(r[key]))]);const vs=pts.map(p=>p[1]);
+    const avg=vs.reduce((a,b)=>a+b,0)/vs.length,sd=Math.sqrt(vs.reduce((s,v)=>s+(v-avg)**2,0)/vs.length);
+    const reg=vs.length<3?zsT(0,`还需 ${3-vs.length} 晚数据`,`${3-vs.length} more nights`):sd<=45?zsT(0,'规律','Regular'):sd<=90?zsT(0,'一般','Varies'):zsT(0,'不规律','Irregular');
+    const W=320,H=120,L=8,R=44,T=8,B=20,lo=Math.min(...vs)-30,hi=Math.max(...vs)+30;
+    const y=v=>T+(1-(v-lo)/(hi-lo||1))*(H-T-B),step=(W-L-R)/7;
+    const pvReg=pvScope('zsreg'+key);let svg='';
+    [lo,(lo+hi)/2,hi].forEach(v=>{svg+=`<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" style="stroke:var(--line)" stroke-dasharray="3 3"/><text x="${W-R+4}" y="${(y(v)+3).toFixed(1)}" font-size="9" style="fill:var(--faint)">${fmt(Math.round(v))}</text>`});
+    pts.forEach(([n,v],i)=>{const pid=pvReg(pvT(esc(md(n)))+pvRow(lab,fmt(v)));svg+=`<circle cx="${(L+i*step+step/2).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4" data-pv="${pid}" style="fill:#7c6cf5"></circle><text x="${(L+i*step+step/2).toFixed(1)}" y="${H-5}" font-size="9" text-anchor="middle" style="fill:var(--faint)">${md(n).slice(3)}</text>`});
+    return `<div class="zs-tiles two"><div class="zs-tile"><div class="zs-big">${fmt(Math.round(avg))}</div><div class="zs-lab">${zsT(0,'平均','avg ')+lab}</div></div><div class="zs-tile"><div class="zs-big">${reg}</div><div class="zs-lab">${lab+zsT(0,'规律性',' regularity')}</div></div></div>
+      <svg viewBox="0 0 ${W} ${H}" data-chart-type="dots" style="width:100%;height:auto;display:block">${svg}</svg>`;
+  };
+  fillCard('zsRegBox',`<div class="zs-sec">${zsT(0,'睡眠规律性（近 7 晚）','Regularity (7 nights)')}</div>${chart('start_at','',zsT(0,'入睡时间','Bedtime'))}${chart('end_at','',zsT(0,'醒来时间','Wake time'))}`);
+}
+function renderZsVital(){
+  const last=SLEEPN[SLEEPN.length-1];if(!last){fillCard('zsVitalBox','');return}
+  const v=(x,lab)=>`<div class="zs-tile"><div class="zs-big">${x==null?'--':x}</div><div class="zs-lab">${lab}</div></div>`;
+  fillCard('zsVitalBox',`<div class="zs-sec">${zsT(0,'健康体征','Vitals')}</div><div class="zs-tiles two">${v(last.sleep_rhr?last.sleep_rhr+' bpm':null,zsT(0,'睡眠静息心率','Sleep resting HR'))}${v(null,zsT(0,'睡眠平均血氧','Sleep SpO₂'))}</div>
+    <div class="sc-line">${last.sleep_rhr?'':zsT(0,'手环开启「睡眠高精度监测」后才有睡眠心率。','Enable assisted sleep monitoring on the band for sleep heart rate.')}</div>`);
+}
+function zsMetric(day,m){const r=HLOG.find(x=>x.date===day&&x.metric===m);return r?Number(r.value):null}
+function renderZsRings(){
+  const day=vTodayISO();const cal=zsMetric(day,'band_cal'),steps=zsMetric(day,'steps'),act=zsMetric(day,'band_active');
+  if(cal==null&&steps==null){fillCard('zsRingsBox',`<div class="sc-empty">${esc(t('hb.none'))}</div>`);return}
+  const G={cal:500,steps:8000,act:30};
+  const ring=(v,max,col,r)=>{const c=2*Math.PI*r,p=Math.max(0,Math.min(1,(v||0)/max));return `<circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="70" cy="70" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 70 70)"><title>${v??0} / ${max}</title></circle>`};
+  const tile=(col,lab,v,max,unit)=>`<div class="zs-tile"><div class="zs-lab"><i class="zs-dot" style="background:${col}"></i>${lab}</div><div class="zs-big">${v??'--'}</div><div class="zs-goal">/${max}${unit}</div></div>`;
+  fillCard('zsRingsBox',`<div class="zs-rings"><svg viewBox="0 0 140 140" data-chart-type="ring" width="140" height="140">${ring(cal,G.cal,ZS_COL.cal,60)}${ring(steps,G.steps,ZS_COL.steps,48)}${ring(act,G.act,ZS_COL.active,36)}</svg>
+    <div class="zs-tiles" style="flex:1">${tile(ZS_COL.cal,zsT(0,'卡路里','Calories'),cal,G.cal,zsT(0,'千卡','kcal'))}${tile(ZS_COL.steps,zsT(0,'步数','Steps'),steps,G.steps,zsT(0,'步',''))}${tile(ZS_COL.active,zsT(0,'活动时长','Active'),act,G.act,zsT(0,'分','min'))}</div></div>
+    <div class="sc-line">${esc(md(day))} · ${zsT(0,'目标按 Zepp Life 默认：500 千卡、8000 步、30 分钟','Goals as in Zepp Life: 500 kcal, 8000 steps, 30 min')}</div>`);
+}
+function zsHourBars(boxId,title,vals,col,unit,note){
+  const W=320,H=120,L=8,R=30,T=14,B=18;const mx=Math.max(10,...vals.map(v=>v||0));
+  const top=Math.ceil(mx/(mx>=1000?500:mx>=100?100:10))*(mx>=1000?500:mx>=100?100:10);
+  const y=v=>T+(1-v/top)*(H-T-B),bw=(W-L-R)/24;const pvReg=pvScope(boxId);let svg='';
+  [0,top/2,top].forEach(v=>{svg+=`<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" style="stroke:var(--line)" stroke-dasharray="3 3"/><text x="${W-R+4}" y="${(y(v)+3).toFixed(1)}" font-size="9" style="fill:var(--faint)">${Math.round(v)}</text>`});
+  vals.forEach((v,h)=>{if(!v)return;const pid=pvReg(pvT(String(h).padStart(2,'0')+':00–'+String(h+1).padStart(2,'0')+':00')+pvRow(unit,String(v)));svg+=`<rect x="${(L+h*bw+1).toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${(y(0)-y(v)).toFixed(1)}" rx="2" data-pv="${pid}" style="fill:${col}"></rect>`});
+  [0,6,12,18,24].forEach(h=>{svg+=`<text x="${(L+h*bw).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="${h===24?'end':h?'middle':'start'}" style="fill:var(--faint)">${String(h).padStart(2,'0')}:00</text>`});
+  const tot=vals.reduce((a,b)=>a+(b||0),0);
+  fillCard(boxId,`<div class="zs-sec">${title}</div><div class="zs-big">${tot}<span class="zs-unit">${unit}</span></div><div class="zs-lab">${note}</div><svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" style="width:100%;height:auto;display:block">${svg}</svg>`);
+}
+function renderZsStepsDay(){
+  const day=vTodayISO(),rows=BHOURS.filter(r=>r.day===day);if(!rows.length){fillCard('zsStepsDayBox','');fillCard('zsCalDayBox','');return}
+  const steps=Array.from({length:24},(_,h)=>{const r=rows.find(x=>x.hour===h);return r?r.steps:0});
+  const worn=rows.filter(r=>r.worn_min>0).map(r=>r.hour);const lastH=worn.length?Math.max(...worn):0;
+  const upto=zsT(0,'今天 ','today ')+String(lastH).padStart(2,'0')+':'+String((rows.find(r=>r.hour===lastH)||{}).worn_min%60||0).padStart(2,'0');
+  zsHourBars('zsStepsDayBox',zsT(0,'步数','Steps'),steps,ZS_COL.steps,zsT(0,'步','steps'),upto);
+  const cal=zsMetric(day,'band_cal')||0,tot=steps.reduce((a,b)=>a+b,0);
+  zsHourBars('zsCalDayBox',zsT(0,'卡路里','Calories'),steps.map(s=>tot?Math.round(cal*s/tot*10)/10:0),ZS_COL.cal,zsT(0,'千卡','kcal'),zsT(0,'按每小时步数分摊全天消耗【估】','Daily burn split by hourly steps (est.)'));
+}
+function renderZsWeek(){
+  const days=isoDaysBack(7);const st=days.map(d=>zsMetric(d,'steps')),cl=days.map(d=>zsMetric(d,'band_cal'));
+  if(!st.some(v=>v!=null)){fillCard('zsWeekBox','');return}
+  const bars=(vals,col,unit)=>{const W=320,H=110,L=8,R=30,T=12,B=18,mx=Math.max(10,...vals.map(v=>v||0)),y=v=>T+(1-v/mx)*(H-T-B),bw=(W-L-R)/7;const pvReg=pvScope('zswk'+unit);let svg=`<line x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--line)"/><text x="${W-R+4}" y="${T+3}" font-size="9" style="fill:var(--faint)">${mx}</text>`;
+    vals.forEach((v,i)=>{const d=days[i];svg+=`<text x="${(L+i*bw+bw/2).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="middle" style="fill:var(--faint)">${md(d).slice(3)}</text>`;if(v==null)return;const pid=pvReg(pvT(esc(md(d)))+pvRow(unit,String(v)));svg+=`<rect x="${(L+i*bw+bw*0.25).toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw*0.5).toFixed(1)}" height="${Math.max(2,y(0)-y(v)).toFixed(1)}" rx="3" data-pv="${pid}" style="fill:${col}"></rect>`});
+    const vs=vals.filter(v=>v!=null),tot=vs.reduce((a,b)=>a+b,0);
+    return `<svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" style="width:100%;height:auto;display:block">${svg}</svg><div class="zs-tiles two"><div class="zs-tile"><div class="zs-big">${tot}</div><div class="zs-lab">${zsT(0,'总计','total')} ${unit}</div></div><div class="zs-tile"><div class="zs-big">${Math.round(tot/vs.length)}</div><div class="zs-lab">${zsT(0,'日均','daily avg')} ${unit}</div></div></div>`};
+  fillCard('zsWeekBox',`<div class="zs-sec">${zsT(0,'本周概览','This week')}</div>${bars(st,ZS_COL.steps,zsT(0,'步','steps'))}${bars(cl,ZS_COL.cal,zsT(0,'千卡','kcal'))}`);
+}
+function renderZsHr(){
+  const day=vTodayISO();const lo=zsMetric(day,'band_rhr'),hi=zsMetric(day,'band_hr_max'),rhr=zsMetric(day,'rhr');
+  if(lo==null&&rhr==null){fillCard('zsHrBox',`<div class="sc-empty">${zsT(0,'手环还没记到心率。','No heart-rate data from the band yet.')}</div>`);return}
+  fillCard('zsHrBox',`<div class="zs-tiles two"><div class="zs-tile"><div class="zs-big">${lo??'--'} ~ ${hi??'--'}<span class="zs-unit">bpm</span></div><div class="zs-lab">${zsT(0,'心率范围','HR range')}</div></div><div class="zs-tile"><div class="zs-big">${rhr??lo??'--'}<span class="zs-unit">bpm</span></div><div class="zs-lab">${zsT(0,'静息心率','Resting HR')}</div></div></div>
+    <div class="sc-line">${esc(md(day))} · ${zsT(0,'逐分钟曲线和心率区间要等手环把心率传上云端。','Minute curve and zones appear once the band uploads heart rate.')}</div>`);
+}
+
 function renderSleepTab(){
   safeRender([()=>butlerCard('bwSleepBox','bwSleepWk','sleep'),
     ()=>renderHabitCard('hxSleepBox',['sleep']),
-    renderNightChart,renderHbSleep,renderSlReg,renderSleepBank,renderRegularity,
+    renderNightChart,renderZsSleep,renderZsHyp,renderZsStruct,renderHbSleep,renderZsReg,renderZsVital,renderSlReg,renderSleepBank,renderRegularity,
     renderCmpSleep,renderNaps,renderNightRows,renderEnergy]);
   secNote('tab-sleep');fitStatGrids();
 }
@@ -7254,7 +7433,7 @@ function renderSportTab(){
   const thin=exDays.size<3;
   safeRender([()=>butlerCard('bwSportBox','bwSportWk','exercise'),
     ()=>renderHabitCard('hxSportBox',['exercise']),
-    renderCmpEx,renderExRing,renderHbSteps,renderHbHr,
+    renderCmpEx,renderExRing,renderZsRings,renderZsStepsDay,renderZsWeek,renderZsHr,renderHbSteps,renderHbHr,
     ()=>thin?fillCard('exVolBox',''):renderExVol(),
     ()=>thin?fillCard('exWeekBox',''):renderExWeekStrip(),
     ()=>thin?fillCard('exDailyBox',''):renderExDaily(),
