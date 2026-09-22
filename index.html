@@ -1623,9 +1623,9 @@
     <div class="card"><div class="sc-title" data-i18n="h.night"></div>
       <div id="nightChartBox"></div></div>
     <div class="card"><div class="sc-title" data-i18n="hb.sleep"></div>
-      <div id="zsSleepBox"></div>
+      <div id="zsSleepBox"></div><div id="zsHypBox"></div>
       <details class="zs-det"><summary data-i18n="zs.more"></summary>
-        <div id="zsHypBox"></div><div id="zsStructBox"></div>
+        <div id="zsStructBox"></div>
         <div class="zs-sec" data-i18n="zs.14n"></div><div id="hbSleepBox"></div>
         <div id="zsRegBox"></div><div id="zsVitalBox"></div></details></div>
     <div class="card"><div class="sc-title" data-i18n="sl.reg"></div>
@@ -1883,7 +1883,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-22e';
+const BUILD='2026-09-22f';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5558,13 +5558,16 @@ function renderSubs(){
   // 账户那一格写「Discover / Card」会被当成折行看，扣款方式一律说中文。
   const WAY={Debit:'借记卡扣',ACH:'ACH 直扣',Card:'信用卡扣',Zelle:'Zelle'};
   const way=x=>WAY[x.method]||x.method||'方式未定';
+  // 房租水电网是跟室友平摊的：账户里走的是全额，她真正要付的是全额 ÷ 人数。
+  const sp=x=>Math.max(1,Number(x.split||1));
+  const mine=x=>Number(x.amount||0)/sp(x);
 
   // 每个账户每月固定要出多少。她 9/20 把工资拆成 Chase 90 / BoA 10，
   // 而电和网都从 BoA 扣，这一栏就是为了让那个矛盾自己显出来。
   const out={};act.forEach(x=>{out[x.account]=(out[x.account]||0)+Number(x.amount||0)});
   const A=document.getElementById('subAcct');
   A.innerHTML=`<table class="sub-tb"><thead><tr><th>账户</th><th>进账</th>
-      <th class="num">每月固定出账</th></tr></thead><tbody>`
+      <th class="num">每月固定出账（全额）</th></tr></thead><tbody>`
     +ACCTS.map(a=>`<tr><td><b>${esc(head(a.name))}</b>
         <span class="sub-sub">${esc(tail(a.name))||'&nbsp;'}</span></td>
       <td>${esc(a.inflow_note||'没写')}</td>
@@ -5576,7 +5579,7 @@ function renderSubs(){
   const sorted=act.slice().sort((x,y)=>
     String(x.next_draft||'9')<String(y.next_draft||'9')?-1:1);
   box.innerHTML=(sorted.length?`<div class="sub-cap">每月固定扣款</div>
-    <table class="sub-tb"><thead><tr><th>项目</th><th class="num">月额</th>
+    <table class="sub-tb"><thead><tr><th>项目</th><th class="num">我付</th>
       <th>扣款账户</th><th>出账</th><th>下次扣款</th></tr></thead><tbody>`
    +sorted.map(x=>{
     const i=act.indexOf(x);
@@ -5587,7 +5590,8 @@ function renderSubs(){
       days=d<0?'已过':d===0?'今天扣':'还有 '+d+' 天';soon=d>=0&&d<=3;}
     const pid=pvReg(pvT(`<span class="pv-dot" style="background:${cols[i%5]}"></span>`
         +esc(x.name))
-      +pvRow('月额',money(x.amount))
+      +pvRow('我付',money(mine(x)))
+      +(sp(x)>1?pvRow('全额',money(x.amount)+'（'+sp(x)+' 人平摊）'):'')
       +pvRow('扣款账户',esc(x.account))
       +pvRow('扣款方式',esc(way(x)))
       +(avg!=null?pvRow('近 '+hist.length+' 期均值',money(avg)):'')
@@ -5597,15 +5601,15 @@ function renderSubs(){
     return `<tr data-pv="${pid}">
       <td><span class="sub-dot" style="background:${cols[i%5]}"></span><b>${esc(head(x.name))}</b>
         <span class="sub-sub">${esc(tail(x.name))||'&nbsp;'}</span></td>
-      <td class="num">${money(x.amount)}<span class="sub-sub">${
-        avg!=null&&hist.length>1?'均 '+money(avg):'&nbsp;'}</span></td>
+      <td class="num">${money(mine(x))}<span class="sub-sub">${
+        sp(x)>1?'全额 '+money(x.amount)+' ÷'+sp(x):(avg!=null&&hist.length>1?'均 '+money(avg):'&nbsp;')}</span></td>
       <td>${esc(head(x.account))}<span class="sub-sub">${esc(way(x))}</span></td>
       <td>${billDay(x)}</td>
       <td>${x.next_draft?x.next_draft.slice(5).replace('-','/'):'未定'}
         <span class="sub-sub${soon?' sub-soon':''}">${days||'&nbsp;'}</span></td></tr>`}).join('')
    +`</tbody><tfoot><tr class="sub-tf"><td>合计</td>
-      <td class="num">${money(act.reduce((s,x)=>s+Number(x.amount||0),0))}</td>
-      <td colspan="3">每月雷打不动出去的钱</td></tr></tfoot></table>`
+      <td class="num">${money(act.reduce((s,x)=>s+mine(x),0))}<span class="sub-sub">全额 ${money(act.reduce((s,x)=>s+Number(x.amount||0),0))}</span></td>
+      <td colspan="3">每月我这份雷打不动出去的钱${act.some(x=>sp(x)>1)?'；房租水电网跟室友平摊，账户按全额扣':''}</td></tr></tfoot></table>`
    :`<div class="sc-empty">还没有登记任何订阅</div>`);
 
   // 分组柱状：一组一个月，一根柱子一个项目。有刻度、有数值、点一下有明细。
