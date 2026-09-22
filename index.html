@@ -1883,7 +1883,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-22f';
+const BUILD='2026-09-22g';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5691,8 +5691,11 @@ async function pullPi(){
     if(!error)PI=data||null;
     // 树莓派推的 door_state 只带最近报的那一扇门，另一扇就没了。
     // 账本里两扇都在，各取最新一条自己算，不用等它改字段。
+    // 只取最近 40 条时，活跃的那扇门（卧室）会把 40 个位置全占满，正门一条都进不来，
+    // 卡片上就干脆没有这一行。她 9/22 问「正门为什么没列出来」，就是这个。整表拉（几百行，
+    // 每行三个字段），客户端按门取最新一条，这样一扇门哪怕两天没动也照样显示状态和时刻。
     const d=await sb.from('door_probe').select('at,state,where_')
-      .eq('testing',false).order('at',{ascending:false}).limit(40);
+      .eq('testing',false).order('at',{ascending:false}).limit(2000);
     DOORS={};(d.data||[]).forEach(r=>{if(!DOORS[r.where_])DOORS[r.where_]=r});
     const f=await sb.from('pipeline_flags').select('*').eq('name','recording').maybeSingle();
     PFLAG=f.data||null;
