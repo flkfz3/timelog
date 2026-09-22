@@ -638,7 +638,7 @@
   .zs-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
   .zs-h1{font-size:18px;font-weight:800;color:var(--ink)}
   .zs-sub{font-size:12px;color:var(--muted);margin-top:4px}
-  .zs-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 8px;margin-top:12px;background:var(--bg-soft,transparent);border-radius:10px}
+  .zs-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 8px;margin-top:12px;background:color-mix(in srgb,var(--line) 35%,transparent);border-radius:12px;padding:10px}
   .zs-tiles.two{grid-template-columns:repeat(2,minmax(0,1fr))}
   .zs-tile{min-width:0}
   .zs-big{font-size:22px;font-weight:800;color:var(--ink);line-height:1.15;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px}
@@ -653,7 +653,7 @@
   .zs-rowh{font-size:12.5px;color:var(--ink);display:flex;align-items:center;gap:4px}
   .zs-right{margin-left:auto;font-weight:700}
   .zs-bar{position:relative;height:10px;border-radius:5px;background:var(--line);margin-top:6px;overflow:hidden}
-  .zs-bar .zs-ref{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,rgba(0,0,0,.14) 0 3px,transparent 3px 6px)}
+  .zs-bar .zs-ref{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--rc) 35%,transparent) 0 3px,transparent 3px 6px);border-left:2px solid var(--rc);border-right:2px solid var(--rc);box-sizing:border-box}
   .zs-bar .zs-val{position:absolute;top:0;bottom:0;left:0;border-radius:5px}
   .zs-ref-t{font-size:10.5px;color:var(--faint);margin-top:3px}
   .zs-rings{display:flex;align-items:center;gap:14px}
@@ -1880,7 +1880,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-22b';
+const BUILD='2026-09-22c';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -7188,7 +7188,7 @@ function safeRender(fns){
   fns.forEach(f=>{try{f()}catch(e){console.warn('card render failed:',f.name,e)}});
 }
 // ---- 手环三张卡（9/21）。契约 F21：刻度、单位、每个数据元素 data-pv、多序列有图例、空态一句话。
-const HB_COL={deep:'#3b5bdb',light:'#5b8def',rem:'#8c6ee8',awake:'#d4a017'};   // 9/21 审图：浅色段对白底不到 3:1，加深
+const HB_COL={deep:'#1d2fb5',light:'#3b82f6',rem:'#4fc3f7',awake:'#ff7a1a'};   // 与 ZS_COL 一致（9/22 审图）   // 9/21 审图：浅色段对白底不到 3:1，加深
 function hbFrame(W,H,L,B,ticks,fmt){
   // 基线 + 左侧刻度文字 + 虚线网格；ticks 是 [值, y] 数组
   return ticks.map(([v,y],i)=>`<line x1="${L}" x2="${W-6}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"
@@ -7294,7 +7294,7 @@ function renderZsSleep(){
   const segs=zsNightStages(last.night),awakeN=segs.filter(s=>s.stage==='Awake').length||(last.awake_min?1:0);
   const deepPct=asleep?Math.round(100*(last.deep_min||0)/asleep):0,eff=Math.round(100*asleep/inbed);
   const score=last.score||0,q=score>=80?zsT(0,'睡眠质量优','Good sleep'):score>=60?zsT(0,'睡眠质量良好','Fair sleep'):zsT(0,'睡眠质量有待提高','Sleep needs work');
-  const tile=(big,unit,lab,tag)=>`<div class="zs-tile"><div class="zs-big">${big}<span class="zs-unit">${unit}</span>${tag||''}</div><div class="zs-lab">${lab}</div></div>`;
+  const tile=(big,unit,lab,tag)=>`<div class="zs-tile"><div class="zs-big">${big}<span class="zs-unit">${unit}</span></div><div class="zs-lab">${lab}${tag||''}</div></div>`;
   const durTag=asleep<420?zsTag('low'):'';
   fillCard('zsSleepBox',`<div class="zs-head"><div><div class="zs-h1">${q}</div><div class="zs-sub">${esc(md(last.night))} · ${zsClock(last.start_at)} → ${zsClock(last.end_at)}</div></div>${score?zsRing(score,100,'#2f6bff',72,score):''}</div>
     <div class="zs-tiles">
@@ -7309,16 +7309,22 @@ function renderZsHyp(){
   const last=SLEEPN[SLEEPN.length-1];const segs=last?zsNightStages(last.night):[];
   if(!segs.length){fillCard('zsHypBox','');return}
   const t0=new Date(segs[0].start_at).getTime(),t1=Math.max(...segs.map(s=>new Date(s.end_at).getTime()));
-  const W=320,H=130,L=8,R=8,T=10,rowH=22,lv={Awake:0,REM:1,Light:2,Deep:3};
+  const W=320,H=138,L=8,R=8,T=10,rowH=22,lv={Awake:0,REM:1,Light:2,Deep:3};
   const x=ms=>L+(ms-t0)/(t1-t0)*(W-L-R);
   const pvReg=pvScope('zshyp');let svg='';
   ['Awake','REM','Light','Deep'].forEach((k,i)=>{svg+=`<line x1="${L}" x2="${W-R}" y1="${T+i*rowH+rowH/2}" y2="${T+i*rowH+rowH/2}" style="stroke:var(--line)" stroke-dasharray="3 3"/>`});
+  // 整点刻度
+  for(let h=Math.ceil(t0/3600000)*3600000;h<t1;h+=3600000){const xx=x(h);svg+=`<line x1="${xx.toFixed(1)}" x2="${xx.toFixed(1)}" y1="${T}" y2="${T+4*rowH}" style="stroke:var(--line)"/><text x="${xx.toFixed(1)}" y="${T+4*rowH+10}" font-size="8.5" text-anchor="middle" style="fill:var(--faint)">${zsClock(h)}</text>`}
+  let prev=null;
   segs.forEach(s=>{
     const a=new Date(s.start_at).getTime(),b=new Date(s.end_at).getTime(),i=lv[s.stage]??2,col=ZS_COL[s.stage.toLowerCase()]||ZS_COL.light;
     const pid=pvReg(pvT(esc(t('hb.'+s.stage.toLowerCase()))+' · '+Math.round((b-a)/60000)+zsT(0,' 分钟',' min'))+pvRow(zsClock(a)+' → '+zsClock(b),''));
-    svg+=`<rect x="${x(a).toFixed(1)}" y="${T+i*rowH+4}" width="${Math.max(1.5,x(b)-x(a)).toFixed(1)}" height="${rowH-8}" rx="3" data-pv="${pid}" style="fill:${col}"></rect>`;
+    const w=Math.max(4,x(b)-x(a)),y0=T+i*rowH+4;
+    if(prev&&prev.i!==i)svg+=`<line x1="${x(a).toFixed(1)}" x2="${x(a).toFixed(1)}" y1="${prev.y+ (rowH-8)/2}" y2="${y0+(rowH-8)/2}" style="stroke:var(--muted);opacity:.5" stroke-width="1.5"/>`;
+    svg+=`<rect x="${x(a).toFixed(1)}" y="${y0}" width="${w.toFixed(1)}" height="${rowH-8}" rx="3" data-pv="${pid}" style="fill:${col}"></rect>`;
+    prev={i,y:y0};
   });
-  svg+=`<text x="${L}" y="${H-4}" font-size="9" style="fill:var(--muted)">${zsClock(t0)} ${zsT(0,'入睡','asleep')}</text><text x="${W-R}" y="${H-4}" font-size="9" text-anchor="end" style="fill:var(--muted)">${zsClock(t1)} ${zsT(0,'醒来','wake')}</text>`;
+  svg+=`<text x="${L}" y="${H-2}" font-size="9" style="fill:var(--muted)">${zsClock(t0)} ${zsT(0,'入睡','asleep')}</text><text x="${W-R}" y="${H-2}" font-size="9" text-anchor="end" style="fill:var(--muted)">${zsClock(t1)} ${zsT(0,'醒来','wake')}</text>`;
   fillCard('zsHypBox',`<div class="zs-sec">${zsT(0,'全天睡眠','Sleep stages')}</div>
     <div class="sub-lg">${['deep','light','rem','awake'].map(k=>`<span><i style="background:${ZS_COL[k]}"></i>${esc(t('hb.'+k))}</span>`).join('')}</div>
     <svg viewBox="0 0 ${W} ${H}" data-chart-type="hypnogram" style="width:100%;height:auto;display:block">${svg}</svg>`);
@@ -7328,7 +7334,7 @@ function renderZsStruct(){
   const asleep=last.asleep_min||0;if(!asleep){fillCard('zsStructBox','');return}
   const segs=zsNightStages(last.night),awakeN=segs.filter(s=>s.stage==='Awake').length;
   const row=(lab,valTxt,pct,lo,hi,col,right,tag)=>`<div class="zs-row"><div class="zs-rowh"><b>${lab}</b> ${valTxt}${tag}<span class="zs-right">${right}</span></div>
-    <div class="zs-bar"><i class="zs-ref" style="left:${lo}%;width:${hi-lo}%"></i><i class="zs-val" style="width:${Math.min(100,pct)}%;background:${col}"></i></div><div class="zs-ref-t">${zsT(0,'参考','ref')}: ${lo}${typeof lo==='number'&&hi<=100&&lab!==zsT(0,'清醒','Awake')?'%':''}-${hi}${hi<=100&&lab!==zsT(0,'清醒','Awake')?'%':''}</div></div>`;
+    <div class="zs-bar"><i class="zs-ref" style="left:${lo}%;width:${hi-lo}%;--rc:${col}"></i><i class="zs-val" style="width:${Math.min(100,pct)}%;background:${col}"></i></div><div class="zs-ref-t">${zsT(0,'参考','ref')}: ${lo}${typeof lo==='number'&&hi<=100&&lab!==zsT(0,'清醒','Awake')?'%':''}-${hi}${hi<=100&&lab!==zsT(0,'清醒','Awake')?'%':''}</div></div>`;
   const p=k=>Math.round(100*(last[k]||0)/asleep);
   fillCard('zsStructBox',`<div class="zs-sec">${zsT(0,'睡眠结构','Sleep structure')}</div>
     ${row(zsT(0,'清醒','Awake'),awakeN+zsT(0,' 次',''),Math.min(100,awakeN*20),0,40,ZS_COL.awake,(last.awake_min||0)+zsT(0,' 分钟',' min'),zsTag(awakeN>2?'high':'')).replace('参考: 0%-40%','参考: 0-2 次').replace('ref: 0%-40%','ref: 0-2')}
@@ -7351,7 +7357,7 @@ function renderZsReg(){
     [lo,(lo+hi)/2,hi].forEach(v=>{svg+=`<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" style="stroke:var(--line)" stroke-dasharray="3 3"/><text x="${W-R+4}" y="${(y(v)+3).toFixed(1)}" font-size="9" style="fill:var(--faint)">${fmt(Math.round(v))}</text>`});
     pts.forEach(([n,v],i)=>{const pid=pvReg(pvT(esc(md(n)))+pvRow(lab,fmt(v)));svg+=`<circle cx="${(L+i*step+step/2).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4" data-pv="${pid}" style="fill:#7c6cf5"></circle><text x="${(L+i*step+step/2).toFixed(1)}" y="${H-5}" font-size="9" text-anchor="middle" style="fill:var(--faint)">${md(n).slice(3)}</text>`});
     return `<div class="zs-tiles two"><div class="zs-tile"><div class="zs-big">${fmt(Math.round(avg))}</div><div class="zs-lab">${zsT(0,'平均','avg ')+lab}</div></div><div class="zs-tile"><div class="zs-big">${reg}</div><div class="zs-lab">${lab+zsT(0,'规律性',' regularity')}</div></div></div>
-      <svg viewBox="0 0 ${W} ${H}" data-chart-type="dots" style="width:100%;height:auto;display:block">${svg}</svg>`;
+      ${vs.length>=3?`<svg viewBox="0 0 ${W} ${H}" data-chart-type="dots" style="width:100%;height:auto;display:block">${svg}</svg>`:''}`;
   };
   fillCard('zsRegBox',`<div class="zs-sec">${zsT(0,'睡眠规律性（近 7 晚）','Regularity (7 nights)')}</div>${chart('start_at','',zsT(0,'入睡时间','Bedtime'))}${chart('end_at','',zsT(0,'醒来时间','Wake time'))}`);
 }
@@ -7366,7 +7372,7 @@ function renderZsRings(){
   const day=vTodayISO();const cal=zsMetric(day,'band_cal'),steps=zsMetric(day,'steps'),act=zsMetric(day,'band_active');
   if(cal==null&&steps==null){fillCard('zsRingsBox',`<div class="sc-empty">${esc(t('hb.none'))}</div>`);return}
   const G={cal:500,steps:8000,act:30};
-  const ring=(v,max,col,r)=>{const c=2*Math.PI*r,p=Math.max(0,Math.min(1,(v||0)/max));return `<circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="70" cy="70" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 70 70)"><title>${v??0} / ${max}</title></circle>`};
+  const ring=(v,max,col,r)=>{const c=2*Math.PI*r,p=v?Math.max(0.02,Math.min(1,v/max)):0;return `<circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--line)" stroke-width="8" opacity=".6"/><circle cx="70" cy="70" r="${r}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="${p<0.05?'butt':'round'}" stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 70 70)"><title>${v??0} / ${max}</title></circle>`};
   const tile=(col,lab,v,max,unit)=>`<div class="zs-tile"><div class="zs-lab"><i class="zs-dot" style="background:${col}"></i>${lab}</div><div class="zs-big">${v??'--'}</div><div class="zs-goal">/${max}${unit}</div></div>`;
   fillCard('zsRingsBox',`<div class="zs-rings"><svg viewBox="0 0 140 140" data-chart-type="ring" width="140" height="140">${ring(cal,G.cal,ZS_COL.cal,60)}${ring(steps,G.steps,ZS_COL.steps,48)}${ring(act,G.act,ZS_COL.active,36)}</svg>
     <div class="zs-tiles" style="flex:1">${tile(ZS_COL.cal,zsT(0,'卡路里','Calories'),cal,G.cal,zsT(0,'千卡','kcal'))}${tile(ZS_COL.steps,zsT(0,'步数','Steps'),steps,G.steps,zsT(0,'步',''))}${tile(ZS_COL.active,zsT(0,'活动时长','Active'),act,G.act,zsT(0,'分','min'))}</div></div>
@@ -7377,7 +7383,7 @@ function zsHourBars(boxId,title,vals,col,unit,note){
   const top=Math.ceil(mx/(mx>=1000?500:mx>=100?100:10))*(mx>=1000?500:mx>=100?100:10);
   const y=v=>T+(1-v/top)*(H-T-B),bw=(W-L-R)/24;const pvReg=pvScope(boxId);let svg='';
   [0,top/2,top].forEach(v=>{svg+=`<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" style="stroke:var(--line)" stroke-dasharray="3 3"/><text x="${W-R+4}" y="${(y(v)+3).toFixed(1)}" font-size="9" style="fill:var(--faint)">${Math.round(v)}</text>`});
-  vals.forEach((v,h)=>{if(!v)return;const pid=pvReg(pvT(String(h).padStart(2,'0')+':00–'+String(h+1).padStart(2,'0')+':00')+pvRow(unit,String(v)));svg+=`<rect x="${(L+h*bw+1).toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${(y(0)-y(v)).toFixed(1)}" rx="2" data-pv="${pid}" style="fill:${col}"></rect>`});
+  vals.forEach((v,h)=>{if(!v)return;const pid=pvReg(pvT(String(h).padStart(2,'0')+':00–'+String(h+1).padStart(2,'0')+':00')+pvRow(unit,String(v)));svg+=`<rect x="${(L+h*bw+1).toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${Math.max(3,y(0)-y(v)).toFixed(1)}" rx="1.5" data-pv="${pid}" style="fill:${col}"></rect>`});
   [0,6,12,18,24].forEach(h=>{svg+=`<text x="${(L+h*bw).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="${h===24?'end':h?'middle':'start'}" style="fill:var(--faint)">${String(h).padStart(2,'0')}:00</text>`});
   const tot=vals.reduce((a,b)=>a+(b||0),0);
   fillCard(boxId,`<div class="zs-sec">${title}</div><div class="zs-big">${tot}<span class="zs-unit">${unit}</span></div><div class="zs-lab">${note}</div><svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" style="width:100%;height:auto;display:block">${svg}</svg>`);
@@ -7394,10 +7400,10 @@ function renderZsStepsDay(){
 function renderZsWeek(){
   const days=isoDaysBack(7);const st=days.map(d=>zsMetric(d,'steps')),cl=days.map(d=>zsMetric(d,'band_cal'));
   if(!st.some(v=>v!=null)){fillCard('zsWeekBox','');return}
-  const bars=(vals,col,unit)=>{const W=320,H=110,L=8,R=30,T=12,B=18,mx=Math.max(10,...vals.map(v=>v||0)),y=v=>T+(1-v/mx)*(H-T-B),bw=(W-L-R)/7;const pvReg=pvScope('zswk'+unit);let svg=`<line x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--line)"/><text x="${W-R+4}" y="${T+3}" font-size="9" style="fill:var(--faint)">${mx}</text>`;
+  const bars=(vals,col,unit)=>{const W=320,H=110,L=8,R=30,T=12,B=18,mx=Math.max(10,...vals.map(v=>v||0)),y=v=>T+(1-v/mx)*(H-T-B),bw=(W-L-R)/7;const pvReg=pvScope('zswk'+unit);let svg=`<line x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--line)"/><line x1="${L}" x2="${W-R}" y1="${T}" y2="${T}" style="stroke:var(--line)" stroke-dasharray="3 3"/><text x="${W-R+4}" y="${T+3}" font-size="9" style="fill:var(--faint)">${mx}</text>`;
     vals.forEach((v,i)=>{const d=days[i];svg+=`<text x="${(L+i*bw+bw/2).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="middle" style="fill:var(--faint)">${md(d).slice(3)}</text>`;if(v==null)return;const pid=pvReg(pvT(esc(md(d)))+pvRow(unit,String(v)));svg+=`<rect x="${(L+i*bw+bw*0.25).toFixed(1)}" y="${y(v).toFixed(1)}" width="${(bw*0.5).toFixed(1)}" height="${Math.max(2,y(0)-y(v)).toFixed(1)}" rx="3" data-pv="${pid}" style="fill:${col}"></rect>`});
     const vs=vals.filter(v=>v!=null),tot=vs.reduce((a,b)=>a+b,0);
-    return `<svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" style="width:100%;height:auto;display:block">${svg}</svg><div class="zs-tiles two"><div class="zs-tile"><div class="zs-big">${tot}</div><div class="zs-lab">${zsT(0,'总计','total')} ${unit}</div></div><div class="zs-tile"><div class="zs-big">${Math.round(tot/vs.length)}</div><div class="zs-lab">${zsT(0,'日均','daily avg')} ${unit}</div></div></div>`};
+    return `<div class="zs-lab" style="margin-top:8px"><i class="zs-dot" style="background:${col}"></i>${unit}</div><svg viewBox="0 0 ${W} ${H}" data-chart-type="bars" style="width:100%;height:auto;display:block">${svg}</svg><div class="zs-tiles two"><div class="zs-tile"><div class="zs-big">${tot}</div><div class="zs-lab">${zsT(0,'总计','total')} ${unit}</div></div><div class="zs-tile"><div class="zs-big">${Math.round(tot/vs.length)}</div><div class="zs-lab">${zsT(0,'日均','daily avg')} ${unit}</div></div></div>`};
   fillCard('zsWeekBox',`<div class="zs-sec">${zsT(0,'本周概览','This week')}</div>${bars(st,ZS_COL.steps,zsT(0,'步','steps'))}${bars(cl,ZS_COL.cal,zsT(0,'千卡','kcal'))}`);
 }
 function renderZsHr(){
