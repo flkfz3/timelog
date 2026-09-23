@@ -1887,7 +1887,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-22i';
+const BUILD='2026-09-23a';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5759,19 +5759,25 @@ function renderPi(){
     // 转录是「空闲才跑」的：她在电脑前时 worker 故意攒着不转，所以最后一条会显得很旧
     // 而管线其实健康。只给一个裸时间会让她误判成坏了（9/22 就发生过），所以这里两个值
     // 分开说：上次真正转出内容是什么时候，worker 此刻在干什么、积压多少。
+    // 措辞按她 9/23 的要求全改成大白话：相对时间后面带上具体时刻，待转录说分钟不说「块」
+    // （一块就是 60 秒录音），心跳那段说「程序正常」而不是「worker 报到」。
     const ago=t=>{const m=Math.round((Date.now()-new Date(t))/60000);
       return m<60?m+' 分钟前':m<1440?Math.round(m/60)+' 小时前':Math.round(m/1440)+' 天前'};
-    const ST={running:['在转','ok'],deferred:['你在用电脑，先攒着','wait'],
-              idle:['空转中','ok'],error:['出错了','bad']};
+    const clk=t=>new Date(t).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const ST={running:['正在转录','ok'],deferred:['你在用电脑，先攒着','wait'],
+              idle:['空闲','ok'],error:['出错','bad']};
     const fresh=(()=>{
       const last=rows.length?rows[rows.length-1].at:(WST&&WST.last_transcript_at);
-      const a=last?`上次转出 ${ago(last)}`:'还没有转出过内容';
-      if(!WST)return `<div class="tr-fresh">${a} · worker 没报过状态</div>`;
+      const a=last?`上次转录：${ago(last)}（${clk(last)}）`:'还没有转出过内容';
+      if(!WST)return `<div class="tr-fresh">${a} · 程序没报过状态</div>`;
       const st=ST[WST.state]||[WST.state,'wait'];
-      const bk=WST.backlog?` · 积压 ${WST.backlog} 块`:'';
-      const hb=`worker ${ago(WST.checked_at)}报到`;
+      const bk=WST.backlog?` · 待转录：${WST.backlog} 分钟`:'';
       const stale=(Date.now()-new Date(WST.checked_at))>3*3600000;
-      return `<div class="tr-fresh ${stale?'bad':st[1]}">${a} · ${esc(st[0])}${bk} · ${hb}${stale?' · 超过三小时没动静':''}</div>`;
+      const bad=stale||WST.state==='error';
+      const hb=bad?`程序可能已停（上次自检 ${ago(WST.checked_at)}）`
+                  :`程序正常（${ago(WST.checked_at)}自检）`;
+      const why=WST.state==='error'&&WST.note?`（${esc(WST.note).slice(0,40)}）`:'';
+      return `<div class="tr-fresh ${bad?'bad':st[1]}">${a}${bk} · ${esc(st[0])}${why} · ${hb}</div>`;
     })();
     TB.innerHTML = rows.length
       ? fresh+`<div class="jn-cnt">48 小时内 <b>${rows.length}</b> 条</div><div class="tr-tl">`
