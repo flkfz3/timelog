@@ -593,10 +593,12 @@
     display:flex;gap:8px;align-items:baseline}
   .tr-n i,.tr-day i{position:absolute;left:-23px;top:11px;width:8px;height:8px;border-radius:50%;
     background:var(--accent);border:2px solid var(--card)}
-  .tr-fresh{font-size:11.5px;margin-bottom:8px;padding:5px 9px;border-radius:7px;
+  .tr-fresh{font-size:12px;margin-bottom:10px;padding:8px 10px;border-radius:8px;
     background:color-mix(in srgb,var(--line) 40%,transparent);color:var(--muted)}
-  .tr-fresh.wait{color:#b45309;background:rgba(245,158,11,.12)}
-  .tr-fresh.bad{color:#b91c1c;background:rgba(239,68,68,.12)}
+  .tr-fr-r{display:flex;justify-content:space-between;gap:10px;line-height:1.9}
+  .tr-fr-r b{color:var(--ink);font-weight:700}
+  .tr-fr-r.bad b{color:#b91c1c}
+  .tr-fresh.bad{background:rgba(239,68,68,.12)}
   .tr-day{font-size:11px;color:var(--faint);padding-top:10px}
   .tr-day i{background:var(--faint);width:6px;height:6px;left:-22px;top:15px}
   .tr-t{flex:0 0 36px;color:var(--faint);font-variant-numeric:tabular-nums;font-size:11px}
@@ -1887,7 +1889,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-23a';
+const BUILD='2026-09-23b';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5764,20 +5766,21 @@ function renderPi(){
     const ago=t=>{const m=Math.round((Date.now()-new Date(t))/60000);
       return m<60?m+' 分钟前':m<1440?Math.round(m/60)+' 小时前':Math.round(m/1440)+' 天前'};
     const clk=t=>new Date(t).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false});
-    const ST={running:['正在转录','ok'],deferred:['你在用电脑，先攒着','wait'],
-              idle:['空闲','ok'],error:['出错','bad']};
+    // 她 9/23 定稿：三行，标签用她的原话，单位统一 min。不单独显示「在转/先攒着」，
+    // 出错和掉线折进「程序活跃」那一行变红。
     const fresh=(()=>{
       const last=rows.length?rows[rows.length-1].at:(WST&&WST.last_transcript_at);
-      const a=last?`上次转录：${ago(last)}（${clk(last)}）`:'还没有转出过内容';
-      if(!WST)return `<div class="tr-fresh">${a} · 程序没报过状态</div>`;
-      const st=ST[WST.state]||[WST.state,'wait'];
-      const bk=WST.backlog?` · 待转录：${WST.backlog} 分钟`:'';
+      const L=(k,v,cls)=>`<div class="tr-fr-r${cls?' '+cls:''}"><span>${k}</span><b>${v}</b></div>`;
+      const l1=L('上次转录', last?`${ago(last)}（${clk(last)}）`:'还没有转出过内容');
+      if(!WST)return `<div class="tr-fresh">${l1}${L('程序活跃','没报过状态','bad')}</div>`;
       const stale=(Date.now()-new Date(WST.checked_at))>3*3600000;
       const bad=stale||WST.state==='error';
-      const hb=bad?`程序可能已停（上次自检 ${ago(WST.checked_at)}）`
-                  :`程序正常（${ago(WST.checked_at)}自检）`;
-      const why=WST.state==='error'&&WST.note?`（${esc(WST.note).slice(0,40)}）`:'';
-      return `<div class="tr-fresh ${bad?'bad':st[1]}">${a}${bk} · ${esc(st[0])}${why} · ${hb}</div>`;
+      const l2=L('待转录', (WST.backlog||0)+'min');
+      const l3=bad
+        ? L('程序活跃', `可能已停（上次活跃 ${ago(WST.checked_at)}）`
+            +(WST.state==='error'&&WST.note?`：${esc(WST.note).slice(0,40)}`:''), 'bad')
+        : L('程序活跃', `${ago(WST.checked_at)}（${clk(WST.checked_at)}）`);
+      return `<div class="tr-fresh${bad?' bad':''}">${l1}${l2}${l3}</div>`;
     })();
     TB.innerHTML = rows.length
       ? fresh+`<div class="jn-cnt">48 小时内 <b>${rows.length}</b> 条</div><div class="tr-tl">`
