@@ -593,6 +593,10 @@
     display:flex;gap:8px;align-items:baseline}
   .tr-n i,.tr-day i{position:absolute;left:-23px;top:11px;width:8px;height:8px;border-radius:50%;
     background:var(--accent);border:2px solid var(--card)}
+  .tr-fresh{font-size:11.5px;margin-bottom:8px;padding:5px 9px;border-radius:7px;
+    background:color-mix(in srgb,var(--line) 40%,transparent);color:var(--muted)}
+  .tr-fresh.wait{color:#b45309;background:rgba(245,158,11,.12)}
+  .tr-fresh.bad{color:#b91c1c;background:rgba(239,68,68,.12)}
   .tr-day{font-size:11px;color:var(--faint);padding-top:10px}
   .tr-day i{background:var(--faint);width:6px;height:6px;left:-22px;top:15px}
   .tr-t{flex:0 0 36px;color:var(--faint);font-variant-numeric:tabular-nums;font-size:11px}
@@ -1883,7 +1887,7 @@
 <script>
 // Bump on every deploy. Shown in the hero ("build <BUILD>"); also the
 // cache-bust token: open the app with ?v=<BUILD>.
-const BUILD='2026-09-22h';
+const BUILD='2026-09-22i';
 const LKEY='timelog.lang';
 // Same Supabase project + anon key as kaileme (shared DB). Public by design;
 // data is secured by Row Level Security, not key secrecy.
@@ -5674,7 +5678,7 @@ function renderSubs(){
       miss.length?miss.join('、')+'还没有历史账单入账，先不画。':''}</div>`;
 }
 let PI=null,piLoaded=false,_piTimer=null;
-let DOORS={}, PFLAG=null, PEV=[], TRS=[];
+let DOORS={}, PFLAG=null, PEV=[], TRS=[], WST=null;
 async function togglePipe(){
   if(!PFLAG)return;
   const b=document.getElementById('piSwBtn'); if(b)b.disabled=true;
@@ -5709,6 +5713,8 @@ async function pullPi(){
       .gte('at',new Date(Date.now()-48*3600000).toISOString())
       .order('at',{ascending:false}).limit(400);
     TRS=tr.data||[];
+    const ws=await sb.from('worker_status').select('*').maybeSingle();
+    WST=(ws&&!ws.error&&ws.data)||null;
   }catch(_){}
   piLoaded=true; renderPi();
 }
@@ -5750,8 +5756,25 @@ function renderPi(){
     // 最早的在上、最近的在下。跨天的地方插一个日期节点。
     const rows=TRS.slice().sort((a,b)=>new Date(a.at)-new Date(b.at));
     let lastDay='';
+    // 转录是「空闲才跑」的：她在电脑前时 worker 故意攒着不转，所以最后一条会显得很旧
+    // 而管线其实健康。只给一个裸时间会让她误判成坏了（9/22 就发生过），所以这里两个值
+    // 分开说：上次真正转出内容是什么时候，worker 此刻在干什么、积压多少。
+    const ago=t=>{const m=Math.round((Date.now()-new Date(t))/60000);
+      return m<60?m+' 分钟前':m<1440?Math.round(m/60)+' 小时前':Math.round(m/1440)+' 天前'};
+    const ST={running:['在转','ok'],deferred:['你在用电脑，先攒着','wait'],
+              idle:['空转中','ok'],error:['出错了','bad']};
+    const fresh=(()=>{
+      const last=rows.length?rows[rows.length-1].at:(WST&&WST.last_transcript_at);
+      const a=last?`上次转出 ${ago(last)}`:'还没有转出过内容';
+      if(!WST)return `<div class="tr-fresh">${a} · worker 没报过状态</div>`;
+      const st=ST[WST.state]||[WST.state,'wait'];
+      const bk=WST.backlog?` · 积压 ${WST.backlog} 块`:'';
+      const hb=`worker ${ago(WST.checked_at)}报到`;
+      const stale=(Date.now()-new Date(WST.checked_at))>3*3600000;
+      return `<div class="tr-fresh ${stale?'bad':st[1]}">${a} · ${esc(st[0])}${bk} · ${hb}${stale?' · 超过三小时没动静':''}</div>`;
+    })();
     TB.innerHTML = rows.length
-      ? `<div class="jn-cnt">48 小时内 <b>${rows.length}</b> 条</div><div class="tr-tl">`
+      ? fresh+`<div class="jn-cnt">48 小时内 <b>${rows.length}</b> 条</div><div class="tr-tl">`
         + rows.map(r=>{
             const d=new Date(r.at);
             const day=d.toLocaleDateString('zh-CN',{month:'numeric',day:'numeric'});
@@ -5761,7 +5784,7 @@ function renderPi(){
               d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})
             }</span><span class="tr-x">${esc(r.text)}</span></div>`;}).join('')
         + `</div>`
-      : `<div class="sc-empty">48 小时内没有转录。录音关着、或者这段时间没人说话，都会是空的。</div>`;
+      : fresh+`<div class="sc-empty">48 小时内没有转录。录音关着、这段时间没人说话、或者转录在排队等你离开电脑，都会是空的。</div>`;
   }
   const EV=document.getElementById('piEv');
   if(EV) EV.innerHTML = PEV.length
